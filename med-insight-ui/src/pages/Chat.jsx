@@ -22,7 +22,10 @@ export default function Chat() {
   const API_URL = process.env.REACT_APP_API_URL || "https://<api-id>.execute-api.ap-southeast-1.amazonaws.com/prod/query";
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"  // ensures it only scrolls enough, not under navbar
+  });
   }, [chatHistory]);
 
   async function sendQuery(queryText) {
