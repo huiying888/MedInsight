@@ -51,6 +51,7 @@ def group_lines_to_chunks(lines, x_threshold=0.03, y_threshold=0.02,
     last_right = None
 
     for ln in lines:
+        print(ln)
         if not cur:
             cur.append(ln)
             last_top = ln["bbox"][1]
@@ -88,6 +89,7 @@ def group_lines_to_chunks(lines, x_threshold=0.03, y_threshold=0.02,
 
     for group in chunks:
         text = " ".join(l["text"] for l in group if l["text"])
+        print(text)
         if not text.strip():
             continue
 
@@ -162,6 +164,7 @@ def extract_text_from_pdf(path):
         for b in page.get_text("blocks"):
             text, bbox = b[4], b[:4]
             if text.strip():
+                print(text.strip())
                 lines.append({
                     "text": text.strip(),
                     "page": page_num,
@@ -172,8 +175,9 @@ def extract_text_from_pdf(path):
 import re
 import os
 
-def get_json_from_s3_file(s3_filename):
-    local_file = download_from_s3(S3_BUCKET, s3_filename)
+def get_json_from_s3_file(s3_folder, s3_file):
+    S3_KEY = f"{s3_folder}/{s3_file}"
+    local_file = download_from_s3(S3_BUCKET, S3_KEY)
 
     try:
         if local_file.lower().endswith(".pdf"):
@@ -181,7 +185,7 @@ def get_json_from_s3_file(s3_filename):
         else:
             lines = extract_text_from_image(local_file)
 
-        chunks = group_lines_to_chunks(lines, source=f"s3://{S3_BUCKET}/{s3_filename}")
+        chunks = group_lines_to_chunks(lines, source=f"s3://{S3_BUCKET}/{S3_KEY}")
 
         # -------------------------------
         # Prepare JSON object (list of dicts)
@@ -192,7 +196,8 @@ def get_json_from_s3_file(s3_filename):
                 "chunk_id": idx,
                 "page": ch["page"],
                 "text": ch["text"],
-                "source": ch["source"]
+                "source": ch["source"],
+                "type": f"{s3_folder}"
             })
 
         return json_chunks
@@ -209,6 +214,26 @@ def get_json_from_s3_file(s3_filename):
 # Example Usage
 # -------------------------------
 if __name__ == "__main__":
-    json_data = get_json_from_s3_file("docs/exampletable.png")
-    print(json_data[0]["text"])
+    folder = "guidelines"
+    file = "MOH_GUIDELINE_FINAL_BOOK_EBOOK_SINGLE_compressed.pdf"
+    json_data = get_json_from_s3_file(folder, file)
+    
+    output_file = f"{os.path.splitext(os.path.basename(file))[0]}.json"  # You can change the filename
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=4)
+
+    # Convert JSON data to string
+    json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
+
+    s3_output_key = f"output_{folder}/{output_file}" # Change to whatever the folder name you want
+
+    # Upload JSON to S3
+    s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_output_key,
+        Body=json_str.encode("utf-8"),
+        ContentType="application/json"
+    )
+
+    print(f"Saved {len(json_data)} items to {output_file}")
 
