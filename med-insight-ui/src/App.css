@@ -12,6 +12,10 @@
     animation: App-logo-spin infinite 20s linear;
   }
 }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 .App-header {
   background-color: #282c34;
@@ -22,6 +26,223 @@
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+}
+/* General Layout */
+body, html, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.chat-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #fff; /* A clean white background */
+  font-family: 'Google Sans', 'Arial', sans-serif;
+}
+
+/* Top Section (Header & FAQ) */
+.top-section {
+  padding: 20px 20px 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  flex-shrink: 0; /* Prevents this section from shrinking when chat history grows */
+}
+
+.chat-header {
+  color: #e26d6d;
+  font-size: 2.5em;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.chat-subtitle {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #555;
+  font-size: 1.1em;
+}
+
+/* FAQ Section */
+.faq-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.faq-button {
+  background-color: #f0f2f5; /* Light grey background */
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 0.6em 1em;
+  font-weight: 500;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.faq-button:hover {
+  background-color: #e0f0ff;
+  border-color: #3399ff;
+  color: #000;
+}
+
+/* Chat History */
+.chat-history-container {
+  flex-grow: 1; /* This section takes up all available space */
+  overflow-y: auto; /* Enables scrolling */
+  padding: 20px 20px 100px; /* Add bottom padding for fixed input */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.message-wrapper {
+  display: flex;
+}
+
+.user {
+  justify-content: flex-end;
+}
+
+.user .message-bubble {
+  background-color: #f5e2e2;
+  color: #333;
+  text-align: right;
+  border: none; /* No border for user messages */
+}
+
+.assistant {
+  justify-content: flex-start;
+}
+
+.assistant .message-bubble {
+  background-color: #fff;
+  border: 1px solid #e26d6d;
+  text-align: left;
+}
+
+.message-bubble {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 20px;
+  max-width: 70%;
+  word-wrap: break-word;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading dots animation */
+.loading-bubble {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.loading-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #e26d6d;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1.0);
+  }
+}
+
+/* Input Area - Fixed at the bottom */
+.chat-input-area-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  padding: 20px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0; /* Prevents shrinking */
+}
+
+.chat-input-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-radius: 25px;
+  padding: 5px 15px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.chat-input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  padding: 10px 0;
+  font-size: 1em;
+}
+
+.send-button {
+  background-color: #e26d6d;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.send-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.send-button:hover:not(:disabled) {
+  background-color: #c05a5a;
+}
+
+.upload-btn {
+  background-color: #e26d6d;
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 0;
+  transition: background-color 0.3s ease;
+}
+
+.upload-btn:hover {
+  background-color: #c05a5a;
 }
 
 .App-link {
