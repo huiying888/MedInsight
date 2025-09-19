@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const aws = require("aws-sdk");
 const bodyParser = require("body-parser");
+const path = require("path");
 
 const app = express();
 app.use(cors());
@@ -14,7 +15,7 @@ const REGION = process.env.AWS_REGION || "us-east-1";
 aws.config.update({
   region: REGION,
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
 const s3 = new aws.S3();
@@ -28,7 +29,7 @@ app.post("/presign", async (req, res) => {
     Bucket: BUCKET,
     Key: key,
     ContentType: fileType,
-    Expires: 60
+    Expires: 60,
   };
 
   try {
@@ -40,4 +41,15 @@ app.post("/presign", async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Server running on http://localhost:5000"));
+// ---------- Serve React frontend ----------
+// Serve React build
+app.use(express.static(path.join(__dirname, "build")));
+
+// Catch-all: send index.html for any route not handled
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () =>
+  console.log(`Server running on http://localhost:${PORT}`)
+);
