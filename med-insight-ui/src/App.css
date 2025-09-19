@@ -332,3 +332,183 @@ body, html, #root {
     transform: rotate(360deg);
   }
 }
+
+/* ---- THEME TOKENS ---- */
+:root {
+  --bg: #fff;
+  --text: #222;
+  --text-strong: #333;
+  --text-muted: #555;
+  --text-subtle: #777;
+  --card-bg: #fff;
+  --card-border: #eee;
+  --input-bg: #f5f5f5;
+  --input-border: #ddd;
+  --table-head: #f5f5f5;
+}
+
+html[data-theme="dark"] {
+  --bg: #111418;
+  --text: #eaecef;
+  --text-strong: #f2f4f8;
+  --text-muted: #c0c6d0;
+  --text-subtle: #99a2b3;
+  --card-bg: #171a1f;
+  --card-border: #2a2f37;
+  --input-bg: #1d2127;
+  --input-border: #2a2f37;
+  --table-head: #1b2026;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .chat-page-container {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .chat-header { color: #f19c9c; }
+html[data-theme="dark"] .chat-subtitle { color: var(--text-muted); }
+
+html[data-theme="dark"] .faq-button {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--input-border);
+}
+html[data-theme="dark"] .faq-button:hover {
+  background-color: #253041;
+  border-color: #4b6ea8;
+  color: #fff;
+}
+
+html[data-theme="dark"] .assistant .message-bubble {
+  background-color: var(--card-bg);
+  border: 1px solid #f19c9c;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .user .message-bubble {
+  background-color: #2a1f1f;
+  color: #f3eaea;
+}
+
+html[data-theme="dark"] .chat-input-area-fixed {
+  background-color: var(--card-bg);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.35);
+}
+
+html[data-theme="dark"] .chat-input-wrapper {
+  background-color: var(--input-bg);
+}
+
+html[data-theme="dark"] .send-button,
+html[data-theme="dark"] .upload-btn {
+  background-color: #f19c9c;
+}
+html[data-theme="dark"] .send-button:hover:not(:disabled),
+html[data-theme="dark"] .upload-btn:hover {
+  background-color: #e26d6d;
+}
+
+html[data-theme="dark"] table { color: var(--text); }
+html[data-theme="dark"] thead tr { background: var(--table-head) !important; }
+
+/* ---- THEME TOKENS ---- */
+:root {
+  --bg: #fff;
+  --text: #222;
+  --text-strong: #333;
+  --text-muted: #555;
+  --text-subtle: #777;
+  --card-bg: #fff;
+  --card-border: #eee;
+  --input-bg: #f5f5f5;
+  --input-border: #ddd;
+  --table-head: #f5f5f5;
+
+  --nav-bg: #ffffff;
+  --nav-text: #333333;
+  --nav-active-bg: #e26d6d;
+  --nav-active-text: #ffffff;
+
+  --upload-card-bg: #fafafa;
+  --upload-card-text: #222;
+  --upload-card-subtext: #555;
+}
+
+html[data-theme="dark"] {
+  --bg: #101317;
+  --text: #eaecef;
+  --text-strong: #f2f4f8;
+  --text-muted: #c0c6d0;
+  --text-subtle: #9aa3b5;
+  --card-bg: #161b22;
+  --card-border: #29303a;
+  --input-bg: #1c222b;
+  --input-border: #2a3240;
+  --table-head: #1b222c;
+
+  --nav-bg: #0c1116;
+  --nav-text: #eaecef;
+  --nav-active-bg: #e26d6d;
+  --nav-active-text: #ffffff;
+
+  --upload-card-bg: #171d25;
+  --upload-card-text: #eaecef;
+  --upload-card-subtext: #c0c6d0;
+}
+
+/* apply background + text globally */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .chat-page-container {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* headings & subtitles */
+.chat-header { color: #e26d6d; } /* keep brand pop */
+.chat-subtitle { color: var(--text-muted); }
+
+/* buttons */
+html[data-theme="dark"] .faq-button {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--input-border);
+}
+html[data-theme="dark"] .faq-button:hover {
+  background-color: #253041;
+  border-color: #4b6ea8;
+  color: #fff;
+}
+html[data-theme="dark"] .send-button,
+html[data-theme="dark"] .upload-btn {
+  background-color: #f19c9c;
+}
+html[data-theme="dark"] .send-button:hover:not(:disabled),
+html[data-theme="dark"] .upload-btn:hover {
+  background-color: #e26d6d;
+}
+
+/* tables */
+html[data-theme="dark"] table { color: var(--text); }
+html[data-theme="dark"] thead tr { background: var(--table-head) !important; }
+
+/* NavBar */
+nav { color: var(--nav-text); background: var(--nav-bg); }
+
+/* Upload cards */
+.upload-card {
+  background: var(--upload-card-bg);
+  color: var(--upload-card-text);
+  border-color: var(--card-border);
+}
+.upload-card p { color: var(--upload-card-subtext); }
+
+/* Dark-mode overrides for the fixed input bar */
+html[data-theme="dark"] .chat-input-area-fixed {
+  background-color: var(--card-bg);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.35);
+}
+
+html[data-theme="dark"] .chat-input-wrapper {
+  background-color: var(--input-bg);
+}
