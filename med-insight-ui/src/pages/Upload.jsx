@@ -1,3 +1,4 @@
+// src/pages/Upload.jsx
 import React, { useState } from "react";
 
 export default function UploadDocs() {
@@ -22,6 +23,7 @@ export default function UploadDocs() {
           folder,
         }),
       });
+      console.log("Presign response status:", res.status);
       const { url } = await res.json();
 
       const uploadRes = await fetch(url, {

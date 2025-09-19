@@ -29,8 +29,9 @@ app.post("/presign", async (req, res) => {
     Bucket: BUCKET,
     Key: key,
     ContentType: fileType,
-    Expires: 60,
+    Expires: 3600*10, // very long expiration for testing
   };
+  console.log("Generating presign for:", params);
 
   try {
     const url = await s3.getSignedUrlPromise("putObject", params);
