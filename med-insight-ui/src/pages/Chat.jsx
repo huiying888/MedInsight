@@ -54,7 +54,7 @@ export default function Chat() {
   return (
     <div className="chat-page-container">
       <div className="top-section">
-        <h1 className="chat-header">💬 MediInsightAI</h1>
+        <h1 className="chat-header">💬 MedInsightAI</h1>
         <p className="chat-subtitle">I'm here to help you uncover business insights from your medical documents.</p>
         <div className="faq-grid">
           {faqItems.map((item) => (
