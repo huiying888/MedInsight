@@ -21,7 +21,7 @@ export default function AppLayout() {
 
       {/* footer */}
       <footer style={{ padding: "12px", textAlign: "center", color: "#666" }}>
-        © {new Date().getFullYear()} MediInsightAI
+        © {new Date().getFullYear()} MedInsightAI
       </footer>
     </div>
   );
