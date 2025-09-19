@@ -29,8 +29,9 @@ app.post("/presign", async (req, res) => {
     Bucket: BUCKET,
     Key: key,
     ContentType: fileType,
-    Expires: 60,
+    Expires: 3600*10, // very long expiration for testing
   };
+  console.log("Generating presign for:", params);
 
   try {
     const url = await s3.getSignedUrlPromise("putObject", params);
@@ -51,5 +52,5 @@ app.get(/.*/, (req, res) => {
 });
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Server running on http://3.90.51.95:${PORT}`)
 );

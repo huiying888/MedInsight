@@ -1,3 +1,4 @@
+// src/pages/Upload.jsx
 import React, { useState } from "react";
 
 export default function UploadDocs() {
@@ -13,7 +14,7 @@ export default function UploadDocs() {
   // upload a single file using presigned URL
   const uploadFile = async (file, folder) => {
     try {
-      const res = await fetch("http://localhost:5000/presign", {
+      const res = await fetch("http://3.90.51.95:5000/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -22,6 +23,7 @@ export default function UploadDocs() {
           folder,
         }),
       });
+      console.log("Presign response status:", res.status);
       const { url } = await res.json();
 
       const uploadRes = await fetch(url, {
