@@ -21,7 +21,7 @@ S3_KEY = "docs/Patient Data 1.pdf"
 # Initialize boto3 client (auto loads creds from env/credentials file)
 # -------------------------------
 s3 = boto3.client("s3", region_name=AWS_REGION)
-
+comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
 def download_from_s3(bucket, key):
     """Download file from S3 to a unique local path."""
 
@@ -209,7 +209,25 @@ def get_json_from_s3_file(s3_folder, s3_file):
         if os.path.exists(local_file):
             os.remove(local_file)
             print(f"Deleted temporary file {local_file}")
-
+def process_patient_with_comprehend(chunks):
+    """Run Comprehend Medical on extracted chunks of patient data."""
+    results = []
+    for ch in chunks:
+        try:
+            resp = comprehend_medical.detect_entities_v2(Text=ch["text"])
+            entities = resp.get("Entities", [])
+            results.append({
+                "chunk_id": ch["chunk_id"],
+                "page": ch["page"],
+                "text": ch["text"],
+                "entities": entities,
+                "source": ch["source"],
+                "type": ch["type"]
+            })
+        except Exception as e:
+            print(f"ComprehendMedical failed: {e}")
+            results.append(ch)  # fallback
+    return results
 # -------------------------------
 # Example Usage
 # -------------------------------
@@ -218,22 +236,36 @@ if __name__ == "__main__":
     file = "MOH_GUIDELINE_FINAL_BOOK_EBOOK_SINGLE_compressed.pdf"
     json_data = get_json_from_s3_file(folder, file)
     
-    output_file = f"{os.path.splitext(os.path.basename(file))[0]}.json"  # You can change the filename
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(json_data, f, ensure_ascii=False, indent=4)
+    # output_file = f"{os.path.splitext(os.path.basename(file))[0]}.json"  # You can change the filename
+    
+    # with open(output_file, "w", encoding="utf-8") as f:
+    #     json.dump(json_data, f, ensure_ascii=False, indent=4)
 
-    # Convert JSON data to string
+    # # Convert JSON data to string
+    # json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
+
+    # s3_output_key = f"output_{folder}/{output_file}" # Change to whatever the folder name you want
+
+    # # Upload JSON to S3
+    # s3.put_object(
+    #     Bucket=S3_BUCKET,
+    #     Key=s3_output_key,
+    #     Body=json_str.encode("utf-8"),
+    #     ContentType="application/json"
+    # )
+
+    output_file = f"{uuid.uuid4().hex}_{os.path.splitext(os.path.basename(file))[0]}.json"
+    PROCESSED_BUCKET = "meddoc-processed"
+    s3_output_key = f"{folder}/{output_file}"
+
     json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
-
-    s3_output_key = f"output_{folder}/{output_file}" # Change to whatever the folder name you want
-
-    # Upload JSON to S3
     s3.put_object(
-        Bucket=S3_BUCKET,
+        Bucket=PROCESSED_BUCKET,
         Key=s3_output_key,
         Body=json_str.encode("utf-8"),
         ContentType="application/json"
     )
 
     print(f"Saved {len(json_data)} items to {output_file}")
+
 
