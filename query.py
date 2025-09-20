@@ -133,6 +133,64 @@ Answer:"""
     resp_body = json.loads(response["body"].read())
     return resp_body["output"]["message"]["content"][0]["text"]
 
+def extract_highlight(question, chunk_text):
+    """Ask LLM to return the most relevant sentence(s) from chunk."""
+    prompt = f"""
+    Extract the most relevant sentence(s) from the following text that directly answer the question. 
+    If nothing relevant, return 'N/A'.
+
+    Question: {question}
+    Text: {chunk_text}
+    """
+    response = bedrock.invoke_model(
+        modelId=LLM_MODEL,
+        body=json.dumps({
+            "messages": [{"role": "user", "content": [{"text": prompt}]}],
+            "inferenceConfig": {"maxTokens": 128, "temperature": 0.0}
+        })
+    )
+    resp_body = json.loads(response["body"].read())
+    return resp_body["output"]["message"]["content"][0]["text"].strip()
+
+def generate_answer_with_sources(question, contexts):
+    # Main answer
+    context_text = "\n\n".join([c["text"] for c in contexts])
+    prompt = f"""You are a medical assistant.
+Use the following patient records,knowledge base and guidelines to answer the question clearly and accurately.
+If the answer is not in the records, say so.
+
+Context:
+{context_text}
+
+Question:
+{question}
+
+Answer:"""
+
+    response = bedrock.invoke_model(
+        modelId=LLM_MODEL,
+        body=json.dumps({
+            "messages": [{"role": "user", "content": [{"text": prompt}]}],
+            "inferenceConfig": {"maxTokens": 512, "temperature": 0.2, "topP": 0.9}
+        })
+    )
+    resp_body = json.loads(response["body"].read())
+    answer = resp_body["output"]["message"]["content"][0]["text"]
+
+    # Add sources + highlights
+    sources = []
+    for c in contexts:
+        highlight = extract_highlight(question, c["text"])
+        sources.append({
+            "file": c.get("file"),
+            "page": c.get("page"),
+            "source": c.get("source"),
+            "highlight": highlight
+        })
+
+    return answer, sources
+
+
 # -------------------------------
 # Main
 # -------------------------------
@@ -144,5 +202,13 @@ if __name__ == "__main__":
         for c in contexts:
             print("-", c["text"][:200], "...")
 
-        answer = generate_answer(q, contexts)
+        # answer = generate_answer(q, contexts)
+        # print("\n🤖 Nova Pro Answer:\n", answer)
+        # print("\n🔦 Highlights:")
+        answer, sources = generate_answer_with_sources(q, contexts)
+
         print("\n🤖 Nova Pro Answer:\n", answer)
+        print("\n📚 Sources:")
+        for s in sources:
+            print(f"- {s['source']} (Page {s['page']})")
+            print(f"  🔎 Highlight: {s['highlight']}\n")
