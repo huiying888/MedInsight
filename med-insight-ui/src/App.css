@@ -819,3 +819,43 @@ html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
   40% { transform: scale(1); }
 }
 
+/* Scrollable area: now smaller */
+.job-panel-body {
+  /* smaller, responsive cap */
+  max-height: clamp(160px, 30vh, 320px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 8px 10px;            /* tighter padding */
+}
+
+/* Tighter spacing inside the list */
+.job-status-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;                     /* reduced from 10px */
+  padding: 0;
+  margin: 0;
+  overflow-anchor: none;
+}
+
+/* Slightly smaller cards */
+.job-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 10px;          /* was 12px */
+  padding: 8px 10px;            /* was 10px 12px */
+}
+
+/* Make the job panel narrower while keeping the same height */
+.job-panel--compact {
+  /* pick a comfy narrow width that still scales on small screens */
+  max-width: clamp(200px, 60vw, 680px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* (optional) tighten the header a touch to match the narrower body */
+.job-panel--compact .job-panel-title {
+  padding-left: 12px;
+  padding-right: 12px;
+}
