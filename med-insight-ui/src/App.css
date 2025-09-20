@@ -756,3 +756,66 @@ html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
 .about-cta .cta-tertiary:hover { border-color: #e26d6d; }
 
 /* Dark mode keeps readability via your theme tokens */
+.job-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.job-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--upload-card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.job-info {
+  font-size: 0.95em;
+  color: var(--upload-card-text);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Status colors */
+.job-badge.processing { background: #fff3cd; color: #856404; }
+.job-badge.completed { background: #d4edda; color: #155724; }
+.job-badge.failed { background: #f8d7da; color: #721c24; }
+
+/* Loading dots animation */
+.loading-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  background-color: currentColor;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
