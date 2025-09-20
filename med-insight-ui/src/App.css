@@ -332,3 +332,274 @@ body, html, #root {
     transform: rotate(360deg);
   }
 }
+
+/* ---- THEME TOKENS ---- */
+:root {
+  --bg: #fff;
+  --text: #222;
+  --text-strong: #333;
+  --text-muted: #555;
+  --text-subtle: #777;
+  --card-bg: #fff;
+  --card-border: #eee;
+  --input-bg: #f5f5f5;
+  --input-border: #ddd;
+  --table-head: #f5f5f5;
+}
+
+html[data-theme="dark"] {
+  --bg: #111418;
+  --text: #eaecef;
+  --text-strong: #f2f4f8;
+  --text-muted: #c0c6d0;
+  --text-subtle: #99a2b3;
+  --card-bg: #171a1f;
+  --card-border: #2a2f37;
+  --input-bg: #1d2127;
+  --input-border: #2a2f37;
+  --table-head: #1b2026;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .chat-page-container {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .chat-header { color: #f19c9c; }
+html[data-theme="dark"] .chat-subtitle { color: var(--text-muted); }
+
+html[data-theme="dark"] .faq-button {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--input-border);
+}
+html[data-theme="dark"] .faq-button:hover {
+  background-color: #253041;
+  border-color: #4b6ea8;
+  color: #fff;
+}
+
+html[data-theme="dark"] .assistant .message-bubble {
+  background-color: var(--card-bg);
+  border: 1px solid #f19c9c;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .user .message-bubble {
+  background-color: #2a1f1f;
+  color: #f3eaea;
+}
+
+html[data-theme="dark"] .chat-input-area-fixed {
+  background-color: var(--card-bg);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.35);
+}
+
+html[data-theme="dark"] .chat-input-wrapper {
+  background-color: var(--input-bg);
+}
+
+html[data-theme="dark"] .send-button,
+html[data-theme="dark"] .upload-btn {
+  background-color: #f19c9c;
+}
+html[data-theme="dark"] .send-button:hover:not(:disabled),
+html[data-theme="dark"] .upload-btn:hover {
+  background-color: #e26d6d;
+}
+
+html[data-theme="dark"] table { color: var(--text); }
+html[data-theme="dark"] thead tr { background: var(--table-head) !important; }
+
+/* ---- THEME TOKENS ---- */
+:root {
+  --bg: #fff;
+  --text: #222;
+  --text-strong: #333;
+  --text-muted: #555;
+  --text-subtle: #777;
+  --card-bg: #fff;
+  --card-border: #eee;
+  --input-bg: #f5f5f5;
+  --input-border: #ddd;
+  --table-head: #f5f5f5;
+
+  --nav-bg: #ffffff;
+  --nav-text: #333333;
+  --nav-active-bg: #e26d6d;
+  --nav-active-text: #ffffff;
+
+  --upload-card-bg: #fafafa;
+  --upload-card-text: #222;
+  --upload-card-subtext: #555;
+}
+
+html[data-theme="dark"] {
+  --bg: #101317;
+  --text: #eaecef;
+  --text-strong: #f2f4f8;
+  --text-muted: #c0c6d0;
+  --text-subtle: #9aa3b5;
+  --card-bg: #161b22;
+  --card-border: #29303a;
+  --input-bg: #1c222b;
+  --input-border: #2a3240;
+  --table-head: #1b222c;
+
+  --nav-bg: #0c1116;
+  --nav-text: #eaecef;
+  --nav-active-bg: #e26d6d;
+  --nav-active-text: #ffffff;
+
+  --upload-card-bg: #171d25;
+  --upload-card-text: #eaecef;
+  --upload-card-subtext: #c0c6d0;
+}
+
+/* apply background + text globally */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .chat-page-container {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* headings & subtitles */
+.chat-header { color: #e26d6d; } /* keep brand pop */
+.chat-subtitle { color: var(--text-muted); }
+
+/* buttons */
+html[data-theme="dark"] .faq-button {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--input-border);
+}
+html[data-theme="dark"] .faq-button:hover {
+  background-color: #253041;
+  border-color: #4b6ea8;
+  color: #fff;
+}
+html[data-theme="dark"] .send-button,
+html[data-theme="dark"] .upload-btn {
+  background-color: #f19c9c;
+}
+html[data-theme="dark"] .send-button:hover:not(:disabled),
+html[data-theme="dark"] .upload-btn:hover {
+  background-color: #e26d6d;
+}
+
+/* tables */
+html[data-theme="dark"] table { color: var(--text); }
+html[data-theme="dark"] thead tr { background: var(--table-head) !important; }
+
+/* NavBar */
+nav { color: var(--nav-text); background: var(--nav-bg); }
+
+/* Upload cards */
+.upload-card {
+  background: var(--upload-card-bg);
+  color: var(--upload-card-text);
+  border-color: var(--card-border);
+}
+.upload-card p { color: var(--upload-card-subtext); }
+
+/* Dark-mode overrides for the fixed input bar */
+html[data-theme="dark"] .chat-input-area-fixed {
+  background-color: var(--card-bg);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.35);
+}
+
+html[data-theme="dark"] .chat-input-wrapper {
+  background-color: var(--input-bg);
+}
+
+/* ---------- Brand ---------- */
+.brand-name {
+  font-size: 1.05rem;
+  color: var(--text-strong);
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  background:
+    radial-gradient(1200px 300px at 50% -80px, rgba(226,109,109,0.25), transparent 60%),
+    var(--bg);
+  border-bottom: 1px solid var(--card-border);
+}
+.hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 16px 32px;
+  text-align: center;
+  color: var(--text);
+}
+.hero-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.badge-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--table-head);
+  color: var(--text-muted);
+  border: 1px solid var(--card-border);
+}
+.hero-title {
+  margin: 16px 0 8px;
+  font-size: clamp(28px, 4.5vw, 44px);
+  line-height: 1.15;
+  color: var(--text-strong);
+}
+.hero-title .accent { color: #e26d6d; }
+.hero-subtitle {
+  max-width: 720px; margin: 0 auto 18px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+.cta-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+.cta-primary {
+  background: #e26d6d; color: #fff; text-decoration: none;
+  padding: 10px 16px; border-radius: 12px; font-weight: 700;
+}
+.cta-primary:hover { background: #cf5d5d; }
+.cta-secondary, .cta-tertiary {
+  border: 1px solid var(--card-border); color: var(--text);
+  text-decoration: none; padding: 10px 16px; border-radius: 12px;
+  background: var(--card-bg);
+}
+.cta-secondary:hover, .cta-tertiary:hover { border-color: #e26d6d; }
+.mini-help { color: var(--text-subtle); }
+
+/* ---------- Features ---------- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  max-width: 1100px; margin: 22px auto; padding: 0 16px;
+}
+.feature-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 16px;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.feature-card h3 { margin: 6px 0 4px; color: var(--text-strong); }
+.feature-card p { margin: 0; color: var(--text-subtle); }
+
+/* ---------- How it works ---------- */
+.how { max-width: 900px; margin: 28px auto; padding: 0 16px; color: var(--text); }
+.how h2 { margin: 0 0 8px; color: var(--text-strong); }
+.how ol { margin: 0; padding-left: 18px; color: var(--text); }
+.how li { margin: 8px 0; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  max-width: 1100px; margin: 32px auto; padding: 16px;
+  display: flex; gap: 10px; justify-content: center; color: var(--text-subtle);
+  border-top: 1px solid var(--card-border);
+}
+.site-footer .dot { opacity: 0.6; }
+
+/* Dark mode tweaks (uses your tokens) */
+html[data-theme="dark"] .badge { background: #1e242c; border-color: #2a3240; color: var(--text-muted); }
