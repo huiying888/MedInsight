@@ -3,6 +3,7 @@ import json
 import os
 import time
 import botocore
+from botocore.exceptions import ClientError
 import faiss
 import numpy as np
 
@@ -58,15 +59,25 @@ def build_or_update_faiss(embeddings, metadata_list):
     try:
         s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
         s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
+
         index = faiss.read_index(INDEX_FILE)
         with open(META_FILE, "r") as f:
             existing_metadata = json.load(f)
-        print("📥 Existing FAISS index + metadata loaded.")
-    except Exception:
-        index = None
-        existing_metadata = []
-        print("⚠️ No existing index found, creating new one.")
 
+        print("📥 Existing FAISS index + metadata loaded.")
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            raise RuntimeError("❌ FAISS index or metadata not found in S3. Aborting.")
+        else:
+            raise  # rethrow other S3 errors
+
+    except FileNotFoundError:
+        raise RuntimeError("❌ Local FAISS index or metadata file missing. Aborting.")
+
+    except Exception as e:
+        raise RuntimeError(f"❌ Unexpected error while loading FAISS index/metadata: {e}")
+    
     # Deduplicate based on (file, chunk_id)
     existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
     new_embeddings = []
@@ -142,9 +153,10 @@ def process_s3_json(folder=None, file=None):
                     "type": ch.get("type")
                 }
                 all_metadata.append(metadata)
+
         except Exception as e:
-            print(f"❌ Error processing {key}: {e}")
-            continue
+            raise RuntimeError(f"❌ Hard failure while processing {key}: {e}")
+
 
     if all_embeddings:
         embeddings_np = np.vstack(all_embeddings)
