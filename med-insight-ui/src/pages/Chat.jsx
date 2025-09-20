@@ -11,6 +11,36 @@ const faqItems = [
   { id: 3, q: "👩🏼‍⚕️ List the patient information" },
   { id: 4, q: "🩸 Show me last lab report result" },
 ];
+function parseAnswerToJSX(answer) {
+  // Remove all ** markers
+  const cleanAnswer = answer.replace(/\*\*/g, "");
+
+  // Split by numbered list items (1., 2., 3., …)
+  const items = cleanAnswer.split(/\d+\.\s+/).filter(Boolean);
+
+  return items.map((item, idx) => {
+    // Split by " - " as before
+    const lines = item.split(" - ").map((line) => line.trim());
+
+    return (
+      <div key={idx} className="patient-card">
+        {lines.map((line, i) => {
+          // Split into key-value if colon exists
+          const [label, value] = line.split(/:(.+)/);
+          if (value) {
+            return (
+              <p key={i}>
+                <strong>{label}:</strong> {value}
+              </p>
+            );
+          } else {
+            return <p key={i}>{line}</p>;
+          }
+        })}
+      </div>
+    );
+  });
+}
 
 export default function Chat() {
   const [q, setQ] = useState("");
@@ -37,14 +67,11 @@ export default function Chat() {
 
     try {
       const { data } = await axios.post(API_URL, { question: queryText });
-      console.log("Response data:", data);
-      console.log("Answer:", data.answer);
-      console.log("Sources:", data.sources);
 
       // Only display the assistant answer (omit contexts)
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: data.answer, sources: data.sources || [] },
+        { role: "assistant", content: parseAnswerToJSX(data.answer), sources: data.sources || [] },
       ]);
     } catch (err) {
       console.error(err);
