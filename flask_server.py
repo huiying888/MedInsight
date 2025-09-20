@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 from json_from_s3_file import get_json_from_s3_file, upload_json_to_s3
+from embedding import process_s3_json
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -26,11 +27,17 @@ def process():
 
         # Upload processed JSON to S3
         s3_output_key = upload_json_to_s3(json_data, s3_folder, s3_file)
+        based_name = os.path.splitext(os.path.basename(s3_file))[0]
+        s3_file_json = f"{based_name}.json"
+        result = process_s3_json(s3_folder, s3_file_json)
 
         return jsonify({
             "message": "Processing successful",
-            "s3_key": s3_output_key
+            "s3_key": s3_output_key,
+            "result": result
         })
+    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
