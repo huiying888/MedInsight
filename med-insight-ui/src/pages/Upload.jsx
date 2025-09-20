@@ -1,4 +1,5 @@
 // src/pages/Upload.jsx
+// change URL to localhost for testing
 import React, { useState } from "react";
 
 export default function UploadDocs() {
@@ -14,7 +15,7 @@ export default function UploadDocs() {
   // upload a single file using presigned URL
   const uploadFile = async (file, folder) => {
     try {
-      const res = await fetch("http://localhost:5000/presign", {
+      const res = await fetch("http://3.90.51.95:5000/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -74,7 +75,7 @@ export default function UploadDocs() {
             folder === "guidelines" ? guidelineFiles :
               knowledgeFiles)[0]; // pick first file for demo
 
-          const res = await fetch("http://127.0.0.1:3000/process", { // Flask runs on port 3000
+          const res = await fetch("http://3.90.51.95:3000/process", { // Flask runs on port 3000
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder, file: file.name }),
