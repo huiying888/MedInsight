@@ -256,7 +256,7 @@ def upload_json_to_s3(json_data, folder, file_name):
     """
     try:
         # Generate a unique output file name
-        output_file = f"{uuid.uuid4().hex}_{os.path.splitext(os.path.basename(file_name))[0]}.json"
+        output_file = f"{os.path.splitext(os.path.basename(file_name))[0]}.json"
         s3_key = f"{folder}/{output_file}"
 
         # Convert to JSON string
