@@ -12,24 +12,34 @@ import os
 # Configs
 # -------------------------------
 
-# Configs 
-AWS_REGION = "us-east-1" 
-S3_BUCKET = "medicalbucket1249832761249837462" 
-S3_KEY = "docs/Patient Data 1.pdf"
+BUCKET = os.getenv("AWS_BUCKET", "meddoc-raw")
+REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+S3_BUCKET = BUCKET
+PROCESSED_BUCKET = "meddoc-processed"
 
 # -------------------------------
 # Initialize boto3 client (auto loads creds from env/credentials file)
 # -------------------------------
-s3 = boto3.client("s3", region_name=AWS_REGION)
+s3 = boto3.client(
+    "s3",
+    region_name=REGION,
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+)
+
 comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
 def download_from_s3(bucket, key):
     """Download file from S3 to a unique local path."""
+    print("downloading from s3")
 
     # Use the base name of the key + a random UUID
     base_name = os.path.basename(key)
     local_path = f"{uuid.uuid4().hex}_{base_name}"
     
     s3.download_file(bucket, key, local_path)
+    print(f"Downloaded s3://{bucket}/{key} to {local_path}")
     return local_path
 
 
@@ -177,8 +187,9 @@ import os
 
 def get_json_from_s3_file(s3_folder, s3_file):
     S3_KEY = f"{s3_folder}/{s3_file}"
+    print(f"Processing s3://{S3_BUCKET}/{S3_KEY}")
     local_file = download_from_s3(S3_BUCKET, S3_KEY)
-
+    print(f"Downloaded {S3_KEY} to {local_file}")
     try:
         if local_file.lower().endswith(".pdf"):
             lines = extract_text_from_pdf(local_file)
@@ -186,6 +197,7 @@ def get_json_from_s3_file(s3_folder, s3_file):
             lines = extract_text_from_image(local_file)
 
         chunks = group_lines_to_chunks(lines, source=f"s3://{S3_BUCKET}/{S3_KEY}")
+        print(f"Extracted {len(chunks)} chunks from {local_file}")
 
         # -------------------------------
         # Prepare JSON object (list of dicts)
@@ -199,8 +211,12 @@ def get_json_from_s3_file(s3_folder, s3_file):
                 "source": ch["source"],
                 "type": f"{s3_folder}"
             })
+        print(f"Prepared {len(json_chunks)} JSON chunks")
 
         return json_chunks
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        raise
 
     finally:
         # -------------------------------
@@ -209,6 +225,7 @@ def get_json_from_s3_file(s3_folder, s3_file):
         if os.path.exists(local_file):
             os.remove(local_file)
             print(f"Deleted temporary file {local_file}")
+
 def process_patient_with_comprehend(chunks):
     """Run Comprehend Medical on extracted chunks of patient data."""
     results = []
@@ -228,6 +245,36 @@ def process_patient_with_comprehend(chunks):
             print(f"ComprehendMedical failed: {e}")
             results.append(ch)  # fallback
     return results
+
+# -------------------------------
+# Upload JSON to S3
+# -------------------------------
+def upload_json_to_s3(json_data, folder, file_name):
+    """
+    Uploads json_data to S3 with a unique name in the given folder.
+    Returns the S3 key of the uploaded file.
+    """
+    try:
+        # Generate a unique output file name
+        output_file = f"{uuid.uuid4().hex}_{os.path.splitext(os.path.basename(file_name))[0]}.json"
+        s3_key = f"{folder}/{output_file}"
+
+        # Convert to JSON string
+        json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
+
+        # Upload to S3
+        s3.put_object(
+            Bucket=PROCESSED_BUCKET,
+            Key=s3_key,
+            Body=json_str.encode("utf-8"),
+            ContentType="application/json"
+        )
+    except Exception as e:
+        print(f"Error uploading JSON to S3: {e}")
+        raise
+
+    return s3_key
+
 # -------------------------------
 # Example Usage
 # -------------------------------

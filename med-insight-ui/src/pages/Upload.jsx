@@ -14,7 +14,7 @@ export default function UploadDocs() {
   // upload a single file using presigned URL
   const uploadFile = async (file, folder) => {
     try {
-      const res = await fetch("http://3.90.51.95:5000/presign", {
+      const res = await fetch("http://localhost:5000/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -41,31 +41,63 @@ export default function UploadDocs() {
 
   const handleConfirmUpload = async () => {
     if (patientFiles.length === 0 && guidelineFiles.length === 0 && knowledgeFiles.length === 0) {
-    setErr("❌ No files selected for upload.");
-    setSuccessMsg("");
-    return;
-  }
+      setErr("❌ No files selected for upload.");
+      setSuccessMsg("");
+      return;
+    }
+
     setLoading(true);
     setErr("");
     setSuccessMsg("");
 
     try {
-      const allFiles = [
+      // 1️⃣ Upload all files to S3
+      const allUploads = [
         ...patientFiles.map((f) => uploadFile(f, "patients")),
         ...guidelineFiles.map((f) => uploadFile(f, "guidelines")),
         ...knowledgeFiles.map((f) => uploadFile(f, "knowledge")),
       ];
-      await Promise.all(allFiles);
-      setSuccessMsg("✅ All files uploaded successfully!");
+      await Promise.all(allUploads);
+
+      // 2️⃣ Call Flask /process for each folder (assuming processing is folder-based)
+      const foldersToProcess = [
+        ...new Set([
+          ...patientFiles.map(() => "patients"),
+          ...guidelineFiles.map(() => "guidelines"),
+          ...knowledgeFiles.map(() => "knowledge"),
+        ]),
+      ];
+
+      const processResults = await Promise.all(
+        foldersToProcess.map(async (folder) => {
+          const file = (folder === "patients" ? patientFiles :
+            folder === "guidelines" ? guidelineFiles :
+              knowledgeFiles)[0]; // pick first file for demo
+
+          const res = await fetch("http://127.0.0.1:3000/process", { // Flask runs on port 3000
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder, file: file.name }),
+          });
+
+          if (!res.ok) throw new Error(`Processing failed for ${folder}`);
+          return res.json();
+        })
+      );
+
+      console.log("Process results:", processResults);
+      setSuccessMsg("✅ All files uploaded and processed successfully!");
       setPatientFiles([]);
       setGuidelineFiles([]);
       setKnowledgeFiles([]);
-    } catch {
-      setErr("❌ Upload failed. Check console for errors.");
+    } catch (e) {
+      console.error(e);
+      setErr("❌ Upload or processing failed. Check console for details.");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="chat-page-container">
@@ -111,10 +143,10 @@ export default function UploadDocs() {
       </div>
 
       {/* Status */}
-    <div style={{ textAlign: "center", marginTop: 16 }}>
-      {err && <p style={{ color: "red", margin: 4 }}>{err}</p>}
-      {successMsg && <p style={{ color: "green", margin: 4 }}>{successMsg}</p>}
-    </div>
+      <div style={{ textAlign: "center", marginTop: 16 }}>
+        {err && <p style={{ color: "red", margin: 4 }}>{err}</p>}
+        {successMsg && <p style={{ color: "green", margin: 4 }}>{successMsg}</p>}
+      </div>
     </div>
   );
 }
