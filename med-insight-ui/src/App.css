@@ -44,22 +44,27 @@ body, html, #root {
 .chat-layout {
   display: flex;
   width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  transition: all 0.3s ease;
+  height: 100vh;         /* full screen height */
+  overflow: hidden;      /* prevents double scrollbars */
 }
 
-/* Chat panel */
+/* Chat panel (left side) */
 .chat-panel {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-width: 0;          /* allows flexbox to shrink properly */
   transition: flex 0.3s ease;
 }
 .chat-panel.shrunk {
-  flex: 0.6; /* shrink to 60% */
+  flex: 0.6;
 }
 
-/* PDF panel */
+
+/* PDF panel (right side) */
 .pdf-viewer {
+  display: flex;
+  flex-direction: column;
   flex: 0;
   overflow: hidden;
   background: #fff;
@@ -67,11 +72,12 @@ body, html, #root {
   transition: flex 0.3s ease;
 }
 .pdf-viewer.open {
-  flex: 0.4; /* takes 40% */
+  flex: 0.4;
 }
 
-/* Inside PDF viewer */
+/* PDF header stays at top */
 .pdf-header {
+  flex-shrink: 0;
   padding: 10px;
   border-bottom: 1px solid #ddd;
   display: flex;
@@ -80,12 +86,12 @@ body, html, #root {
   font-weight: bold;
 }
 
+/* PDF iframe fills remaining space */
 .pdf-iframe {
+  flex: 1;
   width: 100%;
-  height: calc(100% - 40px);
   border: none;
 }
-
 .close-btn {
   background: none;
   border: none;
@@ -153,11 +159,11 @@ body, html, #root {
   color: #000;
 }
 
-/* Chat History */
+/* Chat history scrollable */
 .chat-history-container {
-  flex-grow: 1; /* This section takes up all available space */
-  overflow-y: auto; /* Enables scrolling */
-  padding: 20px 20px 100px; /* Add bottom padding for fixed input */
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -165,7 +171,6 @@ body, html, #root {
   margin: 0 auto;
   width: 100%;
 }
-
 .message-wrapper {
   display: flex;
 }
