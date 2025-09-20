@@ -75,7 +75,7 @@ export default function UploadDocs() {
             folder === "guidelines" ? guidelineFiles :
               knowledgeFiles)[0]; // pick first file for demo
 
-          const res = await fetch("http://172.31.41.23:3000/process", { // Flask runs on port 3000
+          const res = await fetch("http://3.90.51.95:3000/process", { // Flask runs on port 3000
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder, file: file.name }),
