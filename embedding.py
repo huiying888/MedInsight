@@ -124,23 +124,27 @@ def process_s3_json(folder=None, file=None):
             continue
 
         print(f"📥 Processing {key} ...")
-        file_obj = s3.get_object(Bucket=S3_INPUT_BUCKET, Key=key)
-        content = file_obj["Body"].read().decode("utf-8")
-        json_data = json.loads(content)
+        try:
+            file_obj = s3.get_object(Bucket=S3_INPUT_BUCKET, Key=key)
+            content = file_obj["Body"].read().decode("utf-8")
+            json_data = json.loads(content)
+            
+            for ch in json_data:
+                emb = get_embedding(ch["text"])
+                all_embeddings.append(emb)
 
-        for ch in json_data:
-            emb = get_embedding(ch["text"])
-            all_embeddings.append(emb)
-
-            metadata = {
-                "file": key,
-                "chunk_id": ch["chunk_id"],
-                "text": ch["text"],
-                "page": ch.get("page"),
-                "source": ch.get("source"),
-                "type": ch.get("type")
-            }
-            all_metadata.append(metadata)
+                metadata = {
+                    "file": key,
+                    "chunk_id": ch["chunk_id"],
+                    "text": ch["text"],
+                    "page": ch.get("page"),
+                    "source": ch.get("source"),
+                    "type": ch.get("type")
+                }
+                all_metadata.append(metadata)
+        except Exception as e:
+            print(f"❌ Error processing {key}: {e}")
+            continue
 
     if all_embeddings:
         embeddings_np = np.vstack(all_embeddings)
