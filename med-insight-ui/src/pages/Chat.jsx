@@ -37,11 +37,14 @@ export default function Chat() {
 
     try {
       const { data } = await axios.post(API_URL, { question: queryText });
+      console.log("Response data:", data);
+      console.log("Answer:", data.answer);
+      console.log("Sources:", data.sources);
 
       // Only display the assistant answer (omit contexts)
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: data.answer },
+        { role: "assistant", content: data.answer, sources: data.sources || [] },
       ]);
     } catch (err) {
       console.error(err);
@@ -84,9 +87,40 @@ export default function Chat() {
       <div className="chat-history-container">
         {chatHistory.map((m, i) => (
           <div key={i} className={`message-wrapper ${m.role}`}>
-            <div className="message-bubble">{m.content}</div>
+            <div className="message-bubble">
+              {m.content}
+
+              {/* Render sources if available */}
+              {m.role === "assistant" && m.sources && m.sources.length > 0 && (
+                <div className="sources-block">
+                  <strong>📚 Sources:</strong>
+                  <ul>
+                    {m.sources.map((s, idx) => (
+                      <li key={idx}>
+                        <a
+                          href={s.source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {s.file} (Page {s.page})
+                        </a>
+                        <div className="highlight">🔎 {s.highlight}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         ))}
+        {/* {chatHistory.map((m, i) => (
+          <div key={i} className={`message-wrapper ${m.role}`}>
+            <div className="message-bubble">
+              {m.content}
+
+              </div>
+          </div>
+        ))} */}
         {loading && (
           <div className="message-wrapper assistant">
             <div className="message-bubble loading-bubble">

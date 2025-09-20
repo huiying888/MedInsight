@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import os
 from json_from_s3_file import get_json_from_s3_file, upload_json_to_s3
 from embedding import process_s3_json
-from query import hybrid_search, generate_answer
+from query import hybrid_search, generate_answer_with_sources
 import boto3
 from flask_cors import CORS
 
@@ -53,12 +53,13 @@ def ask_question():
 
     contexts = hybrid_search(q, top_k=5)
     contexts_preview = [{"text": c["text"][:200]} for c in contexts]
-    answer = generate_answer(q, contexts)
+    answer, sources = generate_answer_with_sources(q, contexts)
 
     return jsonify({
         "question": q,
         "contexts": contexts_preview,
-        "answer": answer
+        "answer": answer,
+        "sources": sources
     })
 
 if __name__ == "__main__":

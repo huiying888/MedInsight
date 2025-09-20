@@ -1,0 +1,9 @@
+index.faiss
+metadata.json
+__pycache__/embedding.cpython-39.pyc
+__pycache__/flask_server.cpython-39.pyc
+__pycache__/json_from_s3_file.cpython-39.pyc
+__pycache__/query.cpython-39.pyc
+med-insight-ui/package-lock.json
+med-insight-ui/package-lock.json
+med-insight-ui/package.json
