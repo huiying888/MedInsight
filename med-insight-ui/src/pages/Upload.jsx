@@ -186,26 +186,34 @@ export default function UploadDocs() {
 
         {/* Job Status List */}
         {jobStatus.length > 0 && (
-          <div style={{ textAlign: "left", marginTop: 16, maxWidth: 800, marginLeft: "auto", marginRight: "auto" }}>
-            <h4 style={{ color: "#e26d6d", marginBottom: 12 }}>🖥 Digesting Documents </h4>
-            <div className="job-status-list">
-              {jobStatus.map((job, i) => (
-                <div className="job-card" key={i}>
-                  <div className="job-info">
-                    <strong>{job.folder} / {job.file}</strong>
+          <section className="job-panel" role="region" aria-label="Digesting Documents">
+            <div className="job-panel-title">🖥 Digesting Documents</div>
+
+            {/* Scrollable container */}
+            <div className="job-panel-body">
+              <div className="job-status-list">
+                {jobStatus.map((job, i) => (
+                  <div className="job-card" key={`${job.folder}-${job.file}-${i}`}>
+                    <div className="job-info">
+                      <strong>{job.folder} / {job.file}</strong>
+                    </div>
+                    <div
+                      className={
+                        "job-badge " +
+                        (job.status.includes("Processing") ? "processing" :
+                          job.status.includes("Completed") ? "completed" : "failed")
+                      }
+                    >
+                      {job.status}
+                      {job.status.includes("Processing") && (
+                        <span className="loading-dots"><span></span><span></span><span></span></span>
+                      )}
+                    </div>
                   </div>
-                  <div className={`job-badge ${job.status.includes("Processing") ? "processing" : job.status.includes("Completed") ? "completed" : "failed"}`}>
-                    {job.status}
-                    {job.status.includes("Processing") && (
-                      <span className="loading-dots">
-                        <span></span><span></span><span></span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          </section>
         )}
       </div>
     </div>
