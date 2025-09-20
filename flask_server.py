@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 import os
 from json_from_s3_file import get_json_from_s3_file, upload_json_to_s3
 from embedding import process_s3_json
+from query import hybrid_search, generate_answer
+import boto3
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -40,6 +42,24 @@ def process():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/ask", methods=["POST"])
+def ask_question():
+    data = request.get_json()
+    if not data or "question" not in data:
+        return jsonify({"error": "Missing 'question' in request body"}), 400
+
+    q = data["question"]
+
+    contexts = hybrid_search(q, top_k=5)
+    contexts_preview = [{"text": c["text"][:200]} for c in contexts]
+    answer = generate_answer(q, contexts)
+
+    return jsonify({
+        "question": q,
+        "contexts": contexts_preview,
+        "answer": answer
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
