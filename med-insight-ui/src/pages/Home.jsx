@@ -12,7 +12,7 @@ export default function Home() {
             <div className="badge-row">
               <span className="badge">AI medical PDF search</span>
               <span className="badge">AWS-first</span>
-              <span className="badge">ap-southeast-5</span>
+              <span className="badge">us-east-1</span>
             </div>
           </div>
 
@@ -58,15 +58,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="how">
+      {/* HOW IT WORKS (enhanced) */}
+      <section className="how how-v2">
         <h2>How it works</h2>
-        <ol>
-          <li><strong>Upload:</strong> Drop PDFs into your S3 folder.</li>
-          <li><strong>Index:</strong> Text + structure extracted; embeddings prepared.</li>
-          <li><strong>Ask:</strong> Use Chat to query; answers cite their source files.</li>
-        </ol>
+
+        <div className="hiw-rail">
+          {/* Step 1 */}
+          <div className="hiw-step">
+            <div className="hiw-badge">1</div>
+            <div className="hiw-icon" aria-hidden>📤</div>
+            <h3>Upload</h3>
+            <p>
+              Drop PDFs into your S3 bucket or use the <strong>Upload</strong> page.
+              Scans and legacy docs are supported.
+            </p>
+            <div className="hiw-meta">
+              <span>Region:</span>&nbsp;<code>us-east-1</code>
+            </div>
+          </div>
+
+          <div className="hiw-arrow" />
+
+          {/* Step 2 */}
+          <div className="hiw-step">
+            <div className="hiw-badge">2</div>
+            <div className="hiw-icon" aria-hidden>🧠</div>
+            <h3>Index</h3>
+            <p>
+              We extract text & structure, run OCR if needed, and build compact embeddings
+              for fast, low-cost retrieval.
+            </p>
+            <ul className="hiw-list">
+              <li>OCR for scanned PDFs</li>
+              <li>Understands tables & figures</li>
+              <li>Batching to save credits</li>
+            </ul>
+          </div>
+
+          <div className="hiw-arrow" />
+
+          {/* Step 3 */}
+          <div className="hiw-step">
+            <div className="hiw-badge">3</div>
+            <div className="hiw-icon" aria-hidden>💬</div>
+            <h3>Ask</h3>
+            <p>
+              Ask in natural language. Answers include citations to the exact source
+              files and pages for auditability.
+            </p>
+            <div className="hiw-meta">
+              <span>Output:</span>&nbsp;Evidence-linked answers
+            </div>
+          </div>
+        </div>
       </section>
+
 
       <footer className="site-footer">
         <span>© {new Date().getFullYear()} MedInsight</span>

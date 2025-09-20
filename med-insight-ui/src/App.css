@@ -603,3 +603,156 @@ html[data-theme="dark"] .chat-input-wrapper {
 
 /* Dark mode tweaks (uses your tokens) */
 html[data-theme="dark"] .badge { background: #1e242c; border-color: #2a3240; color: var(--text-muted); }
+
+/* ===== How it works (v2) ===== */
+.how.how-v2 { max-width: 1100px; margin: 28px auto 40px; padding: 0 16px; }
+.how.how-v2 > h2 {
+  margin: 0 0 14px;
+  color: var(--text-strong);
+  text-align: center;
+  font-size: clamp(22px, 3.4vw, 28px);
+}
+
+/* desktop layout: step — arrow — step — arrow — step */
+.hiw-rail {
+  display: grid;
+  grid-template-columns: 1fr 48px 1fr 48px 1fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+/* step card */
+.hiw-step {
+  position: relative;
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 18px 16px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.hiw-step:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+  border-color: #e26d6d;
+}
+.hiw-step h3 {
+  margin: 8px 0 6px;
+  font-size: 1.05rem;
+  color: var(--text-strong);
+}
+.hiw-step p { margin: 0 0 10px; color: var(--text); }
+.hiw-list { margin: 6px 0 0 18px; padding: 0; color: var(--text-subtle); }
+.hiw-list li { margin: 4px 0; }
+
+/* numbered badge */
+.hiw-badge {
+  position: absolute; top: -10px; left: -10px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 0.9rem;
+  background: #e26d6d; color: #fff;
+  box-shadow: 0 4px 10px rgba(226,109,109,0.35);
+}
+
+/* big emoji icon */
+.hiw-icon {
+  width: 56px; height: 56px; border-radius: 14px;
+  display: grid; place-items: center;
+  font-size: 28px;
+  background: var(--table-head);
+  color: var(--text-strong);
+  border: 1px solid var(--card-border);
+}
+
+/* key/value line under each card */
+.hiw-meta {
+  display: inline-flex; gap: 6px; align-items: baseline;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  padding: 6px 10px; border-radius: 10px; margin-top: 6px;
+  color: var(--text-muted);
+}
+.hiw-meta code { background: transparent; color: var(--text); }
+
+/* connecting arrow column (desktop) */
+.hiw-arrow { position: relative; }
+.hiw-arrow::before {
+  content: "";
+  position: absolute; top: 50%; left: 0; right: 0;
+  height: 2px; background: var(--card-border);
+}
+.hiw-arrow::after {
+  content: "";
+  position: absolute; top: calc(50% - 6px); right: 10px;
+  border: 6px solid transparent;
+  border-left-color: #e26d6d; /* little triangle tip */
+}
+
+/* responsive: stack steps; hide arrows */
+@media (max-width: 860px) {
+  .hiw-rail { grid-template-columns: 1fr; gap: 12px; }
+  .hiw-arrow { display:none; }
+  .hiw-step { padding: 16px; }
+  .hiw-icon { width: 48px; height: 48px; font-size: 24px; }
+}
+
+/* dark-mode tweaks (rely on your theme tokens) */
+html[data-theme="dark"] .hiw-step:hover { border-color: #f19c9c; }
+html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
+
+/* ===== About Page ===== */
+.about-page { color: var(--text); }
+
+.about-hero {
+  max-width: 960px;
+  margin: 24px auto 8px;
+  padding: 0 16px;
+  text-align: center;
+}
+.about-hero h1 {
+  margin: 12px 0 6px;
+  color: var(--text-strong);
+}
+.about-lead {
+  margin: 0 auto;
+  max-width: 760px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.about-body {
+  max-width: 960px;
+  margin: 16px auto 40px;
+  padding: 0 16px;
+}
+.about-body h3 {
+  margin: 18px 0 8px;
+  color: var(--text-strong);
+}
+.about-list { margin: 0 0 10px 18px; color: var(--text); }
+.about-list li { margin: 6px 0; color: var(--text); }
+
+.about-cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.about-cta .cta-primary {
+  background: #e26d6d; color: #fff; text-decoration: none;
+  padding: 10px 16px; border-radius: 12px; font-weight: 700;
+}
+.about-cta .cta-primary:hover { background: #cf5d5d; }
+
+.about-cta .cta-secondary,
+.about-cta .cta-tertiary {
+  border: 1px solid var(--card-border); color: var(--text);
+  text-decoration: none; padding: 10px 16px; border-radius: 12px;
+  background: var(--card-bg);
+}
+.about-cta .cta-secondary:hover,
+.about-cta .cta-tertiary:hover { border-color: #e26d6d; }
+
+/* Dark mode keeps readability via your theme tokens */
