@@ -13,14 +13,21 @@ REGION = "us-east-1"
 BEDROCK_MODEL = "amazon.titan-embed-text-v1"
 S3_INPUT_BUCKET = "meddoc-processed"        # input (your JSONs)
 S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metadata)
-
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 INDEX_FILE = "index.faiss"
 META_FILE = "metadata.json"
 
 # -------------------------------
 # Clients
 # -------------------------------
-s3 = boto3.client("s3", region_name=REGION)
+s3 = boto3.client(
+    "s3",
+    region_name=REGION,
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+)
+
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
 # -------------------------------
