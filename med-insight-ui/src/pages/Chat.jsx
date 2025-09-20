@@ -19,26 +19,36 @@ export default function Chat() {
   ]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "https://<api-id>.execute-api.ap-southeast-1.amazonaws.com/prod/query";
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest"  // ensures it only scrolls enough, not under navbar
-  });
+      behavior: "smooth",
+      block: "nearest",
+    });
   }, [chatHistory]);
 
   async function sendQuery(queryText) {
     if (!queryText.trim()) return;
+
     setChatHistory((h) => [...h, { role: "user", content: queryText }]);
     setQ("");
     setLoading(true);
+
     try {
-      const { data } = await axios.post(API_URL, { query: queryText });
-      setChatHistory((h) => [...h, { role: "assistant", content: data.answer }]);
+      const { data } = await axios.post(API_URL, { question: queryText });
+
+      // Only display the assistant answer (omit contexts)
+      setChatHistory((h) => [
+        ...h,
+        { role: "assistant", content: data.answer },
+      ]);
     } catch (err) {
       console.error(err);
-      setChatHistory((h) => [...h, { role: "assistant", content: "An error occurred. Please try again." }]);
+      setChatHistory((h) => [
+        ...h,
+        { role: "assistant", content: "An error occurred. Please try again." },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -55,10 +65,16 @@ export default function Chat() {
     <div className="chat-page-container">
       <div className="top-section">
         <h1 className="chat-header">💬 MedInsightAI</h1>
-        <p className="chat-subtitle">I'm here to help you uncover business insights from your medical documents.</p>
+        <p className="chat-subtitle">
+          I'm here to help you uncover business insights from your medical documents.
+        </p>
         <div className="faq-grid">
           {faqItems.map((item) => (
-            <button key={item.id} className="faq-button" onClick={() => handleFaqClick(item.q)}>
+            <button
+              key={item.id}
+              className="faq-button"
+              onClick={() => handleFaqClick(item.q)}
+            >
               {item.q}
             </button>
           ))}
@@ -74,7 +90,9 @@ export default function Chat() {
         {loading && (
           <div className="message-wrapper assistant">
             <div className="message-bubble loading-bubble">
-              <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
+              <div className="loading-dot" />
+              <div className="loading-dot" />
+              <div className="loading-dot" />
             </div>
           </div>
         )}
@@ -85,7 +103,13 @@ export default function Chat() {
         <div className="chat-input-wrapper">
           <label htmlFor="file-upload" className="upload-btn" title="Upload PDF">
             +
-            <input id="file-upload" type="file" onChange={handleFileUpload} accept=".pdf,.txt" style={{ display: "none" }} />
+            <input
+              id="file-upload"
+              type="file"
+              onChange={handleFileUpload}
+              accept=".pdf,.txt"
+              style={{ display: "none" }}
+            />
           </label>
           <input
             type="text"
@@ -96,7 +120,11 @@ export default function Chat() {
             placeholder="Ask me something about your documents..."
             disabled={loading}
           />
-          <button className="send-button" onClick={() => sendQuery(q)} disabled={loading || !q.trim()}>
+          <button
+            className="send-button"
+            onClick={() => sendQuery(q)}
+            disabled={loading || !q.trim()}
+          >
             Send
           </button>
         </div>
