@@ -82,7 +82,7 @@ export default function Chat() {
       // Only display the assistant answer (omit contexts)
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: parseAnswerToJSX(data.answer), sources },
+        { role: "assistant", content: parseAnswerToJSX(data.answer), sources: data.sources },
       ]);
     } catch (err) {
       console.error(err);
@@ -128,27 +128,22 @@ export default function Chat() {
           <div key={i} className={`message-wrapper ${m.role}`}>
             <div className="message-bubble">
               {m.content}
-
-              {/* Render sources if available */}
-              {m.role === "assistant" && m.sources && m.sources.length > 0 && (
-                <div className="sources-block">
-                  <strong>📚 Sources:</strong>
-                  <ul>
+              {m.role === "assistant" && m.sources?.length > 0 && (
+                <div style={{ marginTop: 10, borderTop: "1px solid #eee", paddingTop: 8 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
+                  <ol style={{ margin: 0, paddingLeft: 18 }}>
                     {m.sources.map((s, idx) => (
-                      <li key={idx}>
-                        <a
-                          href={s.source}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {s.file} (Page {s.page})
+                      <li key={idx} style={{ marginBottom: 8 }}>
+                        <a href={s.url} target="_blank" rel="noreferrer" style={{ color: "#e26d6d", fontWeight: 600 }}>
+                          {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
                         </a>
-                        <div className="highlight">🔎 {s.highlight}</div>
+                        {s.highlight && <blockquote style={{ margin: "6px 0 0 0", color: "#555" }}>{s.highlight}</blockquote>}
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
               )}
+
             </div>
           </div>
         ))}
