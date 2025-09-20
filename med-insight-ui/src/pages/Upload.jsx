@@ -1,30 +1,29 @@
 // src/pages/Upload.jsx
 // change URL to localhost for testing
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
 export default function UploadDocs() {
   const [patientFiles, setPatientFiles] = useState([]);
   const [guidelineFiles, setGuidelineFiles] = useState([]);
   const [knowledgeFiles, setKnowledgeFiles] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [jobStatus, setJobStatus] = useState([]); // array of {folder, file, status}
   const [err, setErr] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  // refs for file inputs
+  const patientInputRef = useRef();
+  const guidelineInputRef = useRef();
+  const knowledgeInputRef = useRef();
 
   const handleFileChange = (e, setter) => setter(Array.from(e.target.files));
 
-  // upload a single file using presigned URL
   const uploadFile = async (file, folder) => {
     try {
-      const res = await fetch("http://3.90.51.95:5000/presign", {
+      const res = await fetch("http://localhost:5000/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          folder,
-        }),
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, folder }),
       });
-      console.log("Presign response status:", res.status);
       const { url } = await res.json();
 
       const uploadRes = await fetch(url, {
@@ -40,6 +39,48 @@ export default function UploadDocs() {
     }
   };
 
+  const startProcessing = async (jobsToProcess, startIndex = 0) => {
+    const promises = jobsToProcess.map((job, i) =>
+      (async () => {
+        // Update status to Processing
+        setJobStatus(prev => {
+          const updated = [...prev];
+          updated[startIndex + i].status = "Processing...";
+          return updated;
+        });
+
+        try {
+          const res = await fetch("http://localhost:3000/process", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder: job.folder, file: job.file }),
+          });
+
+          if (!res.ok) throw new Error(`Processing failed for ${job.folder}: ${job.file}`);
+          await res.json();
+
+          // Update status to Completed
+          setJobStatus(prev => {
+            const updated = [...prev];
+            updated[startIndex + i].status = "✅ Completed";
+            return updated;
+          });
+        } catch (e) {
+          console.error(e);
+          setJobStatus(prev => {
+            const updated = [...prev];
+            updated[startIndex + i].status = "❌ Failed";
+            return updated;
+          });
+        }
+      })()
+    );
+
+    await Promise.all(promises);
+  };
+
+
+
   const handleConfirmUpload = async () => {
     if (patientFiles.length === 0 && guidelineFiles.length === 0 && knowledgeFiles.length === 0) {
       setErr("❌ No files selected for upload.");
@@ -47,57 +88,52 @@ export default function UploadDocs() {
       return;
     }
 
-    setLoading(true);
+    setUploading(true);
     setErr("");
     setSuccessMsg("");
 
     try {
-      // 1️⃣ Upload all files to S3
+      // Upload all files
       const allUploads = [
         ...patientFiles.map((f) => uploadFile(f, "patients")),
         ...guidelineFiles.map((f) => uploadFile(f, "guidelines")),
         ...knowledgeFiles.map((f) => uploadFile(f, "knowledge")),
       ];
       await Promise.all(allUploads);
+      setSuccessMsg("✅ Files uploaded successfully!");
 
-      // 2️⃣ Call Flask /process for each folder (assuming processing is folder-based)
-      const foldersToProcess = [
-        ...new Set([
-          ...patientFiles.map(() => "patients"),
-          ...guidelineFiles.map(() => "guidelines"),
-          ...knowledgeFiles.map(() => "knowledge"),
-        ]),
+      // Prepare new jobs
+      const newJobs = [
+        ...patientFiles.map((f) => ({ folder: "patients", file: f.name, status: "Pending" })),
+        ...guidelineFiles.map((f) => ({ folder: "guidelines", file: f.name, status: "Pending" })),
+        ...knowledgeFiles.map((f) => ({ folder: "knowledge", file: f.name, status: "Pending" })),
       ];
 
-      const processResults = await Promise.all(
-        foldersToProcess.map(async (folder) => {
-          const file = (folder === "patients" ? patientFiles :
-            folder === "guidelines" ? guidelineFiles :
-              knowledgeFiles)[0]; // pick first file for demo
+      // Calculate start index for new jobs
+      const startIndex = jobStatus.length;
 
-          const res = await fetch("http://3.90.51.95:3000/process", { // Flask runs on port 3000
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ folder, file: file.name }),
-          });
+      // Append new jobs
+      setJobStatus(prev => [...prev, ...newJobs]);
 
-          if (!res.ok) throw new Error(`Processing failed for ${folder}`);
-          return res.json();
-        })
-      );
+      // Start processing new jobs separately
+      startProcessing(newJobs, startIndex);
 
-      console.log("Process results:", processResults);
-      setSuccessMsg("✅ All files uploaded and processed successfully!");
+      // Clear file selections and input values
       setPatientFiles([]);
       setGuidelineFiles([]);
       setKnowledgeFiles([]);
+      if (patientInputRef.current) patientInputRef.current.value = "";
+      if (guidelineInputRef.current) guidelineInputRef.current.value = "";
+      if (knowledgeInputRef.current) knowledgeInputRef.current.value = "";
+
     } catch (e) {
       console.error(e);
-      setErr("❌ Upload or processing failed. Check console for details.");
+      setErr("❌ Upload failed. Check console for details.");
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
+
 
 
   return (
@@ -110,43 +146,67 @@ export default function UploadDocs() {
       </div>
 
       <div className="upload-sections">
-        {/* Patient Records */}
-        <div className="upload-card">
-          <h3>🩺 Patient Records</h3>
-          <input type="file" multiple onChange={(e) => handleFileChange(e, setPatientFiles)} />
-          <ul className="file-list">{patientFiles.map((f, i) => <li key={i}>{f.name}</li>)}</ul>
-        </div>
+        {["patients", "guidelines", "knowledge"].map((type) => {
+          const files = type === "patients" ? patientFiles :
+            type === "guidelines" ? guidelineFiles : knowledgeFiles;
+          const setFiles = type === "patients" ? setPatientFiles :
+            type === "guidelines" ? setGuidelineFiles : setKnowledgeFiles;
+          const label = type === "patients" ? "🩺 Patient Records" :
+            type === "guidelines" ? "📘 Guidelines" : "💡 Knowledge";
 
-        {/* Guidelines */}
-        <div className="upload-card">
-          <h3>📘 Guidelines</h3>
-          <input type="file" multiple onChange={(e) => handleFileChange(e, setGuidelineFiles)} />
-          <ul className="file-list">{guidelineFiles.map((f, i) => <li key={i}>{f.name}</li>)}</ul>
-        </div>
-
-        {/* Knowledge Base */}
-        <div className="upload-card">
-          <h3>💡 Knowledge</h3>
-          <input type="file" multiple onChange={(e) => handleFileChange(e, setKnowledgeFiles)} />
-          <ul className="file-list">{knowledgeFiles.map((f, i) => <li key={i}>{f.name}</li>)}</ul>
-        </div>
+          return (
+            <div className="upload-card" key={type}>
+              <h3>{label}</h3>
+              <input
+                type="file"
+                multiple
+                ref={type === "patients" ? patientInputRef :
+                  type === "guidelines" ? guidelineInputRef :
+                    knowledgeInputRef}
+                onChange={(e) => handleFileChange(e, setFiles)}
+              />              <ul className="file-list">{files.map((f, i) => <li key={i}>{f.name}</li>)}</ul>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Confirm Buttons using original CSS */}
       <div className="confirm-button-container">
         <button
           className="confirm-button"
           onClick={handleConfirmUpload}
-          disabled={loading}
+          disabled={uploading}
         >
-          {loading ? "Uploading..." : "Confirm Upload"}
+          {uploading ? "Uploading..." : "Confirm Upload"}
         </button>
       </div>
 
-      {/* Status */}
       <div style={{ textAlign: "center", marginTop: 16 }}>
         {err && <p style={{ color: "red", margin: 4 }}>{err}</p>}
         {successMsg && <p style={{ color: "green", margin: 4 }}>{successMsg}</p>}
+
+        {/* Job Status List */}
+        {jobStatus.length > 0 && (
+          <div style={{ textAlign: "left", marginTop: 16, maxWidth: 800, marginLeft: "auto", marginRight: "auto" }}>
+            <h4 style={{ color: "#e26d6d", marginBottom: 12 }}>🖥 Digesting Documents </h4>
+            <div className="job-status-list">
+              {jobStatus.map((job, i) => (
+                <div className="job-card" key={i}>
+                  <div className="job-info">
+                    <strong>{job.folder} / {job.file}</strong>
+                  </div>
+                  <div className={`job-badge ${job.status.includes("Processing") ? "processing" : job.status.includes("Completed") ? "completed" : "failed"}`}>
+                    {job.status}
+                    {job.status.includes("Processing") && (
+                      <span className="loading-dots">
+                        <span></span><span></span><span></span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
