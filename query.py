@@ -95,8 +95,6 @@ def keyword_search(query, max_hits=5):
 
 def hybrid_search(query, top_k=3, keyword_hits=5):
     faiss_results = query_faiss(query, k=top_k)
-    print(f"🔹 FAISS returned {len(faiss_results)} results")
-
     keyword_results = []
     for q in extract_keywords(query):
         keyword_results.extend(keyword_search(q, max_hits=keyword_hits))
@@ -106,7 +104,6 @@ def hybrid_search(query, top_k=3, keyword_hits=5):
     for r in keyword_results:
         if id(r) not in seen:
             merged.append(r)
-    print(f"🔹 Total merged results: {len(merged)}")
     return merged
 
 # -------------------------------
