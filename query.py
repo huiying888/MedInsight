@@ -93,7 +93,13 @@ def keyword_search(query, max_hits=5):
                 break
     return results
 
-def hybrid_search(query, top_k=3, keyword_hits=5):
+def hybrid_search(query, top_k=None, keyword_hits=5):
+    """Dynamic search that adapts number of contexts based on query length and results."""
+    # Dynamically set top_k if not provided
+    if top_k is None:
+        # Example: shorter queries get more contexts, longer queries fewer
+        top_k = 10 if len(query.split()) <= 3 else 5
+
     faiss_results = query_faiss(query, k=top_k)
     print(f"🔹 FAISS returned {len(faiss_results)} results")
 
@@ -106,9 +112,9 @@ def hybrid_search(query, top_k=3, keyword_hits=5):
     for r in keyword_results:
         if id(r) not in seen:
             merged.append(r)
+
     print(f"🔹 Total merged results: {len(merged)}")
     return merged
-
 # -------------------------------
 # Generate Answer with Nova Pro
 # -------------------------------
@@ -153,13 +159,15 @@ def extract_highlight(question, chunk_text):
         })
     )
     resp_body = json.loads(response["body"].read())
-    return resp_body["output"]["message"]["content"][0]["text"].strip()
+    highlight = resp_body["output"]["message"]["content"][0]["text"]
+    return highlight.strip()
+
 
 def generate_answer_with_sources(question, contexts):
     # Main answer
     context_text = "\n\n".join([c["text"] for c in contexts])
     prompt = f"""You are a medical assistant.
-Use the following patient records,knowledge base and guidelines to answer the question clearly and accurately.
+Use the following patient records, knowledge base and guidelines to answer the question clearly and accurately.
 If the answer is not in the records, say so.
 
 Context:
@@ -180,18 +188,22 @@ Answer:"""
     resp_body = json.loads(response["body"].read())
     answer = resp_body["output"]["message"]["content"][0]["text"]
 
-    # Add sources + highlights
+    # Add sources + highlights (skip N/A)
     sources = []
     for c in contexts:
         highlight = extract_highlight(question, c["text"])
-        sources.append({
-            "file": c.get("file"),
-            "page": c.get("page"),
-            "source": c.get("source"),
-            "highlight": highlight
-        })
+        print("Extracted Highlight:", highlight)
+        norm = highlight.strip().lower()
+        if norm and "n/a" not in norm.lower():
+            sources.append({
+                "file": c.get("file"),
+                "page": c.get("page"),
+                "source": c.get("source"),
+                "highlight": highlight.strip()
+            })
 
     return answer, sources
+
 
 
 # -------------------------------
