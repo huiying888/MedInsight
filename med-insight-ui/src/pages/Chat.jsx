@@ -68,10 +68,21 @@ export default function Chat() {
     try {
       const { data } = await axios.post(API_URL, { question: queryText });
 
+      // Convert S3 URIs (s3://bucket/key) → HTTPS URLs
+      const sources = (data.sources || []).map((s) => {
+        let url = s.url;
+        if (url.startsWith("s3://")) {
+          const [, bucket, ...keyParts] = url.split("/");
+          const key = keyParts.join("/");
+          url = `https://${bucket}.s3.us-east-1.amazonaws.com/${encodeURIComponent(key)}`;
+        }
+        return { ...s, url };
+      });
+
       // Only display the assistant answer (omit contexts)
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: parseAnswerToJSX(data.answer), sources: data.sources || [] },
+        { role: "assistant", content: parseAnswerToJSX(data.answer), sources },
       ]);
     } catch (err) {
       console.error(err);
@@ -83,6 +94,7 @@ export default function Chat() {
       setLoading(false);
     }
   }
+
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
