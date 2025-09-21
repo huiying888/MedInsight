@@ -264,7 +264,7 @@ Answer:"""
     # Add sources + highlights (skip N/A)
     sources = []
     seen = {}
-    for c in contexts:
+    for c in filtered_contexts:
         hl = extract_highlight(question, c["text"]) or ""
         norm = hl.strip().lower()
         if not norm or "n/a" in norm:
@@ -282,15 +282,29 @@ Answer:"""
         if page:
             url = f"{url}#page={page}"
 
-        sources.append({
-            "file": c.get("file") or key.split("/")[-1],
-            "page": page,
-            "key": key,
-            "url": url,
-            "highlight": hl.strip(),
-        })
-        # print all appended sources
-        print("Appended source:", sources[-1])
+        file_name = c.get("file") or key.split("/")[-1]
+        dedup_key = (key, page)
+
+
+        if dedup_key not in seen:
+            seen[dedup_key] = {
+                "file": file_name,
+                "page": page,
+                "key": key,
+                "url": url,
+                "highlight": set()
+            }
+
+
+        if hl.strip():
+            seen[dedup_key]["highlight"].add(hl.strip())
+
+    # ✅ Build final sources list
+    sources = []
+    for entry in seen.values():
+        entry["highlight"] = list(entry["highlight"])
+        sources.append(entry)
+
 
     return answer, sources
 
@@ -315,5 +329,5 @@ if __name__ == "__main__":
         print("\n🤖 Nova Pro Answer:\n", answer)
         print("\n📚 Sources:")
         for s in sources:
-            print(f"- {s['source']} (Page {s['page']})")
+            print(f"- {s['key']} (Page {s['page']})")
             print(f"  🔎 Highlight: {s['highlight']}\n")
