@@ -108,7 +108,7 @@ function highlightTextToHTML(text, highlights = []) {
   // Normalize: strip punctuation + collapse whitespace + lowercase
   function normalize(str) {
     return str
-      .replace(/[.,:;!?\-–—()\[\]{}'"`]/g, "") // remove punctuation
+      .replace(/[.,:;!?\ –—()\[\]{}'"`]/g, "") // remove punctuation
       .replace(/\s+/g, " ") // collapse whitespace
       .toLowerCase()
       .trim();
@@ -224,24 +224,24 @@ export default function Chat() {
 
   // ✅ Extract highlights only from latest sources
   const pdfHighlights = latestSources.flatMap((s) => {
-  if (!s.highlight) return [];
+    if (!s.highlight) return [];
 
-  // Ensure highlight is a string
-  const highlightStr = Array.isArray(s.highlight)
-    ? s.highlight.join("\n")
-    : String(s.highlight);
+    // Ensure highlight is a string
+    const highlightStr = Array.isArray(s.highlight)
+      ? s.highlight.join("\n")
+      : String(s.highlight);
 
-  return highlightStr
-    .split(/\n|[,;]+|\s{2,}|\s-\s/)
-    .flatMap((h) => {
-      if (h.includes(":")) {
-        const [left, right] = h.split(":");
-        return [left.trim(), right.trim()].filter(Boolean);
-      }
-      return [h.trim()];
-    })
-    .filter(Boolean);
-});
+    return highlightStr
+      .split(/\n|[,;]+|\s{2,}|\s-\s/)
+      .flatMap((h) => {
+        if (h.includes(":")) {
+          const [left, right] = h.split(":");
+          return [left.trim(), right.trim()].filter(Boolean);
+        }
+        return [h.trim()];
+      })
+      .filter(Boolean);
+  });
 
 
   useEffect(() => {
@@ -288,11 +288,11 @@ export default function Chat() {
                       {m.sources.map((s, idx) => (
                         <li key={idx} style={{ marginBottom: 8 }}>
                           <button
-  className="source-link"
-  onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
->
-  {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
-</button>
+                            className="source-link"
+                            onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
+                          >
+                            {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+                          </button>
                         </li>
                       ))}
                     </ol>
