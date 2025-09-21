@@ -239,6 +239,7 @@ body, html, #root {
 }
 
 /* Input Area - Fixed at the bottom */
+/* Input Area - Fixed at the bottom */
 .chat-input-area-fixed {
   position: fixed;
   bottom: 0;
@@ -250,7 +251,11 @@ body, html, #root {
   display: flex;
   justify-content: center;
   flex-shrink: 0; /* Prevents shrinking */
+
+  /* ⬆ Ensure it’s above the PDF drawer */
+  z-index: 10000;
 }
+
 
 .chat-input-wrapper {
   display: flex;
@@ -261,7 +266,9 @@ body, html, #root {
   padding: 5px 15px;
   max-width: 800px;
   width: 100%;
+  z-index: 10001; /* just to be super safe inside the fixed bar */
 }
+
 
 .chat-input {
   flex-grow: 1;
