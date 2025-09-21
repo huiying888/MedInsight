@@ -11,6 +11,7 @@ const LS = {
   itemsPerPage: "mi_items_per_page",
   showSizes: "mi_show_sizes",
   lastPrefix: "mi_docs_last_prefix",
+  knownPrefixes: "mi_known_prefixes",
 };
 
 function parentPrefix(pfx = "") {
@@ -28,22 +29,24 @@ async function listS3(prefix = "") {
 
   const dom = new window.DOMParser().parseFromString(xml, "application/xml");
 
-  // namespaced + non-namespaced fallback
+  // name-spaced + fallback
   let cps = Array.from(dom.getElementsByTagNameNS(NS, "CommonPrefixes"));
   if (cps.length === 0) cps = Array.from(dom.getElementsByTagName("CommonPrefixes"));
 
-  const folders = cps.map(cp => {
-    const node = cp.getElementsByTagNameNS(NS, "Prefix")[0] || cp.getElementsByTagName("Prefix")[0];
-    return (node?.textContent || "").trim();
-  }).filter(Boolean);
+  const folders = cps
+    .map((cp) => {
+      const node = cp.getElementsByTagNameNS(NS, "Prefix")[0] || cp.getElementsByTagName("Prefix")[0];
+      return (node?.textContent || "").trim();
+    })
+    .filter(Boolean);
 
   let files = Array.from(dom.getElementsByTagNameNS(NS, "Contents"));
   if (files.length === 0) files = Array.from(dom.getElementsByTagName("Contents"));
 
-  files = files.map(c => {
+  files = files.map((c) => {
     const keyNode = c.getElementsByTagNameNS(NS, "Key")[0] || c.getElementsByTagName("Key")[0];
     const sizeNode = c.getElementsByTagNameNS(NS, "Size")[0] || c.getElementsByTagName("Size")[0];
-    const lmNode   = c.getElementsByTagNameNS(NS, "LastModified")[0] || c.getElementsByTagName("LastModified")[0];
+    const lmNode = c.getElementsByTagNameNS(NS, "LastModified")[0] || c.getElementsByTagName("LastModified")[0];
     const key = (keyNode?.textContent || "").trim();
     return {
       key,
@@ -53,23 +56,26 @@ async function listS3(prefix = "") {
   });
 
   // remove folder markers
-  files = files.filter(f => !(f.key.endsWith("/") && f.size === 0));
+  files = files.filter((f) => !(f.key.endsWith("/") && f.size === 0));
   // link
-  files = files.map(f => ({ ...f, url: `${S3_BASE}/${encodeURIComponent(f.key).replace(/%2F/g, "/")}` }));
+  files = files.map((f) => ({
+    ...f,
+    url: `${S3_BASE}/${encodeURIComponent(f.key).replace(/%2F/g, "/")}`,
+  }));
 
   return { folders, files };
 }
 
 export default function Docs() {
-  // read saved prefs
+  // prefs
   const rememberLast = (localStorage.getItem(LS.rememberLastFolder) || "true") === "true";
   const defaultPrefixPref = localStorage.getItem(LS.defaultPrefix) || "";
   const rowsPerPage = Math.max(1, Math.min(500, Number(localStorage.getItem(LS.itemsPerPage) || 50)));
   const showSizes = (localStorage.getItem(LS.showSizes) || "true") === "true";
 
   const initialPrefix = rememberLast
-    ? (localStorage.getItem(LS.lastPrefix) ?? defaultPrefixPref ?? "")
-    : (defaultPrefixPref ?? "");
+    ? localStorage.getItem(LS.lastPrefix) ?? defaultPrefixPref ?? ""
+    : defaultPrefixPref ?? "";
 
   const [prefix, setPrefix] = useState(initialPrefix || "");
   const [folders, setFolders] = useState([]);
@@ -77,18 +83,26 @@ export default function Docs() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // explorer UI state
+  const [filter, setFilter] = useState("");
+  const [view, setView] = useState("list"); // 'list' | 'grid'
+  const [sortKey, setSortKey] = useState("name"); // 'name' | 'size' | 'date'
+  const [sortDir, setSortDir] = useState("asc"); // 'asc' | 'desc'
+
   // pagination
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(files.length / rowsPerPage));
-  const pagedFiles = useMemo(() => {
-    const start = (page - 1) * rowsPerPage;
-    return files.slice(start, start + rowsPerPage);
-  }, [files, page, rowsPerPage]);
 
-  const crumbs = useMemo(() => {
-    const parts = prefix.split("/").filter(Boolean);
-    return [{ label: "root", pfx: "" }, ...parts.map((p, i) => ({ label: p, pfx: parts.slice(0, i + 1).join("/") + "/" }))];
-  }, [prefix]);
+  // sidebar known prefixes (quick access)
+  const knownPrefixes = useMemo(() => {
+    const raw = (localStorage.getItem(LS.knownPrefixes) || "").split(",").map(s => s.trim()).filter(Boolean);
+    const set = new Set(raw);
+    // include current and default if missing
+    if (prefix) set.add(prefix.split("/")[0] + "/");
+    if (defaultPrefixPref) set.add(defaultPrefixPref.split("/")[0] + "/");
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [prefix, defaultPrefixPref]);
+
+  const totalPages = Math.max(1, Math.ceil(files.length / rowsPerPage));
 
   async function load(pfx = "") {
     setLoading(true);
@@ -99,33 +113,25 @@ export default function Docs() {
       setFiles(files);
       setPrefix(pfx);
       setPage(1);
-      localStorage.setItem("mi_docs_last_prefix", pfx);
+      localStorage.setItem(LS.lastPrefix, pfx);
 
-      // ---- NEW: remember top-level prefixes for Settings fallback ----
+      // remember top-level prefixes for quick access
       const known = new Set(
-        (localStorage.getItem("mi_known_prefixes") || "").split(",").map(s => s.trim()).filter(Boolean)
+        (localStorage.getItem(LS.knownPrefixes) || "").split(",").map((s) => s.trim()).filter(Boolean)
       );
-
-      // from current prefix
       if (pfx) {
         const top = pfx.split("/")[0];
         if (top) known.add(top + "/");
       }
-
-      // from folders in this view
-      folders.forEach(f => {
+      folders.forEach((f) => {
         const seg = f.split("/")[0];
         if (seg) known.add(seg + "/");
       });
-
-      // from files in this view
-      files.forEach(f => {
+      files.forEach((f) => {
         const seg = f.key.split("/")[0];
         if (seg) known.add(seg + "/");
       });
-
-      localStorage.setItem("mi_known_prefixes", Array.from(known).sort().join(","));
-      // ----------------------------------------------------------------
+      localStorage.setItem(LS.knownPrefixes, Array.from(known).sort().join(","));
     } catch (e) {
       console.error(e);
       setErr("❌ Failed to load from S3. Check bucket policy & CORS.");
@@ -134,110 +140,248 @@ export default function Docs() {
     }
   }
 
-  useEffect(() => { load(prefix); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    load(prefix); // initial load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // filtering + sorting
+  const filteredFolders = useMemo(() => {
+    const f = filter.trim().toLowerCase();
+    return folders
+      .map((fp) => ({ full: fp, name: fp.replace(prefix, "").replace(/\/$/, "") }))
+      .filter((x) => (f ? x.name.toLowerCase().includes(f) : true))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [folders, prefix, filter]);
+
+  const sortedFilteredFiles = useMemo(() => {
+    const f = filter.trim().toLowerCase();
+    let list = files
+      .map((file) => {
+        const name = file.key.replace(prefix, "");
+        return { ...file, name };
+      })
+      .filter((x) => (f ? x.name.toLowerCase().includes(f) : true));
+
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === "size") {
+        cmp = a.size - b.size;
+      } else if (sortKey === "date") {
+        cmp = new Date(a.lastModified).getTime() - new Date(b.lastModified).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return list;
+  }, [files, prefix, filter, sortKey, sortDir]);
+
+  const pagedFiles = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return sortedFilteredFiles.slice(start, start + rowsPerPage);
+  }, [sortedFilteredFiles, page, rowsPerPage]);
+
+  // UI handlers
+  const onOpenFolder = (pfx) => load(pfx);
+  const onUp = () => load(parentPrefix(prefix));
+  const onRefresh = () => load(prefix);
+  const gotoDefault = () => load(defaultPrefixPref || "");
+
+  const crumbs = useMemo(() => {
+    const parts = prefix.split("/").filter(Boolean);
+    return [{ label: "root", pfx: "" }, ...parts.map((p, i) => ({ label: p, pfx: parts.slice(0, i + 1).join("/") + "/" }))];
+  }, [prefix]);
 
   return (
-    <div className="chat-page-container">
-      <div className="top-section">
-        <h1 className="chat-header">📂 Bucket Browser</h1>
-        <p className="chat-subtitle">Browsing {BUCKET} in {REGION}</p>
+    <div className="docs-explorer">
+      {/* Sidebar */}
+      <aside className="docs-sidebar">
+        <div className="docs-side-head">
+          <div className="docs-bucket">🪣 {BUCKET}</div>
+          <div className="docs-region">Region: <code>{REGION}</code></div>
+        </div>
 
-        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontWeight: 500, color: "var(--text-strong, #333)" }}>
+        <div className="docs-side-actions">
+          <button className="faq-button" onClick={() => load("")}>🏠 Root</button>
+          <button className="faq-button" onClick={gotoDefault} disabled={(defaultPrefixPref || "") === prefix}>📌 Default</button>
+          <button className="faq-button" onClick={onUp} disabled={!prefix}>⬆️ Up</button>
+          <button className="faq-button" onClick={onRefresh}>🔄 Refresh</button>
+        </div>
+
+        <div className="docs-side-group">
+          <div className="docs-side-title">Quick access</div>
+          <div className="docs-side-list">
+            {knownPrefixes.length === 0 ? (
+              <div className="docs-muted">No known prefixes yet.</div>
+            ) : (
+              knownPrefixes.map((p) => (
+                <button
+                  key={p}
+                  className={`docs-side-item ${prefix.startsWith(p) ? "active" : ""}`}
+                  onClick={() => load(p)}
+                  title={p}
+                >
+                  <span className="folder-emoji">📂</span> {p}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <section className="docs-main">
+        {/* Top bar */}
+        <div className="docs-topbar">
+          <div className="docs-crumbs">
             {crumbs.map((c, i) => (
               <span key={c.pfx}>
-                <a href="#!" onClick={() => load(c.pfx)} style={{ color: "#e26d6d", textDecoration: "none" }}>{c.label}</a>
-                {i < crumbs.length - 1 ? " / " : ""}
+                <a href="#!" onClick={() => onOpenFolder(c.pfx)} className="docs-crumb-link">{c.label}</a>
+                {i < crumbs.length - 1 ? <span className="docs-crumb-sep"> / </span> : null}
               </span>
             ))}
           </div>
 
-          <button className="faq-button" onClick={() => load(parentPrefix(prefix))} disabled={!prefix} style={{ padding: "0.5em 0.9em" }}>
-            ⬆️ Up one level
-          </button>
-
-          <button className="faq-button" onClick={() => load(defaultPrefixPref || "")} disabled={(defaultPrefixPref || "") === prefix} style={{ padding: "0.5em 0.9em" }}>
-            📌 Go to default
-          </button>
-        </div>
-      </div>
-
-      <div className="chat-history-container" style={{ position: "relative", paddingBottom: 80, minHeight: 360 }}>
-        {loading && (
-          <div style={{position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(46, 46, 46, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
-            <div className="message-bubble loading-bubble" style={{ background: "var(--card-bg, #fff)", border: "1px solid #e26d6d" }}>
-              <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
-              <span style={{ marginLeft: 8, color: "#e26d6d", fontWeight: 600 }}>Loading…</span>
-            </div>
+          <div className="docs-controls">
+            <input
+              className="docs-search"
+              placeholder="Filter by name…"
+              value={filter}
+              onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+            />
+            <select className="docs-select" value={view} onChange={(e) => setView(e.target.value)}>
+              <option value="list">List view</option>
+              <option value="grid">Grid view</option>
+            </select>
+            <select className="docs-select" value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+              <option value="name">Sort: Name</option>
+              <option value="size">Sort: Size</option>
+              <option value="date">Sort: Date</option>
+            </select>
+            <select className="docs-select" value={sortDir} onChange={(e) => setSortDir(e.target.value)}>
+              <option value="asc">Asc</option>
+              <option value="desc">Desc</option>
+            </select>
           </div>
-        )}
+        </div>
 
-        {err && <p style={{ color: "crimson" }}>{err}</p>}
-
-        <h3 style={{ marginTop: 0, color: "var(--text-strong, #333)" }}>📁 Folders</h3>
-        {folders.length > 0 ? (
-          <div className="faq-grid">
-            {folders.map((f) => {
-              const name = f.replace(prefix, "").replace(/\/$/, "");
-              return (
-                <button key={f} className="faq-button" onClick={() => load(f)}>
-                  📂 {name}
+        {/* Folders */}
+        <div className={`docs-folders ${view}`}>
+          {filteredFolders.length === 0 ? (
+            <div className="docs-empty">No subfolders.</div>
+          ) : view === "grid" ? (
+            <div className="folder-grid">
+              {filteredFolders.map((f) => (
+                <button
+                  key={f.full}
+                  className="folder-card"
+                  onClick={() => onOpenFolder(f.full)}
+                  title={f.full}
+                >
+                  <div className="folder-icon">📁</div>
+                  <div className="folder-name" title={f.name}>{f.name}</div>
                 </button>
+              ))}
+            </div>
+          ) : (
+            <div className="folder-list">
+              {filteredFolders.map((f) => (
+                <button
+                  key={f.full}
+                  className="folder-row"
+                  onClick={() => onOpenFolder(f.full)}
+                  title={f.full}
+                >
+                  <span className="folder-emoji">📂</span>
+                  <span className="folder-name" title={f.name}>{f.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Files */}
+        {sortedFilteredFiles.length === 0 ? (
+          <div className="docs-empty">No files in this folder.</div>
+        ) : view === "grid" ? (
+          <div className="file-grid">
+            {pagedFiles.map((f) => {
+              const sizeKB = (f.size / 1024).toFixed(1);
+              return (
+                <a key={f.key} href={f.url} target="_blank" rel="noreferrer" className="file-card" title={f.name}>
+                  <div className="file-icon">📄</div>
+                  <div className="file-name" title={f.name}>{f.name}</div>
+                  <div className="file-meta">
+                    {showSizes && <span>{sizeKB} KB</span>}
+                    <span>{f.lastModified ? new Date(f.lastModified).toLocaleString() : ""}</span>
+                  </div>
+                </a>
               );
             })}
           </div>
         ) : (
-          <p style={{ color: "var(--text-subtle, #777)" }}>No subfolders here.</p>
+          <div className="file-table-wrap">
+            <table className="file-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  {showSizes && <th style={{ textAlign: "right" }}>Size (KB)</th>}
+                  <th>Last Modified</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedFiles.map((f) => {
+                  const sizeKB = (f.size / 1024).toFixed(1);
+                  const when = f.lastModified ? new Date(f.lastModified).toLocaleString() : "";
+                  return (
+                    <tr key={f.key}>
+                      <td>{f.name}</td>
+                      {showSizes && <td style={{ textAlign: "right" }}>{sizeKB}</td>}
+                      <td>{when}</td>
+                      <td>
+                        <a href={f.url} target="_blank" rel="noreferrer" className="send-button" style={{ textDecoration: "none", padding: "6px 14px" }}>
+                          Open
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        <h3 style={{ color: "var(--text-strong, #333)" }}>📑 Files</h3>
-        {files.length === 0 ? (
-          <p style={{ color: "var(--text-subtle, #777)" }}>No files here.</p>
-        ) : (
-          <>
-            <div style={{ overflowX: "auto" /* horizontal only – no inner vertical scroll */, overflowY: "visible" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "var(--table-head, #f5f5f5)" }}>
-                    <th style={{ textAlign: "left", padding: 10 }}>Name</th>
-                    {showSizes && <th style={{ textAlign: "right", padding: 10 }}>Size (KB)</th>}
-                    <th style={{ textAlign: "left", padding: 10 }}>Last Modified</th>
-                    <th style={{ padding: 10 }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedFiles.map((f) => {
-                    const name = f.key.replace(prefix, "");
-                    const sizeKB = (f.size / 1024).toFixed(1);
-                    const when = f.lastModified ? new Date(f.lastModified).toLocaleString() : "";
-                    return (
-                      <tr key={f.key} style={{ borderBottom: "1px solid #eee" }}>
-                        <td style={{ padding: 10 }}>{name}</td>
-                        {showSizes && <td style={{ padding: 10, textAlign: "right" }}>{sizeKB}</td>}
-                        <td style={{ padding: 10 }}>{when}</td>
-                        <td style={{ padding: 10 }}>
-                          <a href={f.url} target="_blank" rel="noreferrer" className="send-button" style={{ textDecoration: "none", padding: "6px 14px" }}>
-                            Open
-                          </a>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12 }}>
-              <button className="faq-button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>◀ Prev</button>
-              <span style={{ alignSelf: "center", color: "var(--text, #333)" }}>
-                Page {page} / {totalPages} · {files.length} files · {rowsPerPage} rows/page
-              </span>
-              <button className="faq-button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next ▶</button>
-            </div>
-          </>
+        {/* Pagination */}
+        {sortedFilteredFiles.length > rowsPerPage && (
+          <div className="docs-pager">
+            <button className="faq-button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              ◀ Prev
+            </button>
+            <span className="docs-page-label">
+              Page {page} / {totalPages} · {sortedFilteredFiles.length} files · {rowsPerPage} rows/page
+            </span>
+            <button className="faq-button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              Next ▶
+            </button>
+          </div>
         )}
-      </div>
+      </section>
+
+      {/* Fullscreen loading overlay */}
+      {loading && (
+        <div className="docs-loading">
+          <div className="message-bubble loading-bubble" style={{ background: "var(--card-bg)", border: "1px solid #e26d6d" }}>
+            <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
+            <span style={{ marginLeft: 8, color: "#e26d6d", fontWeight: 600 }}>Loading…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {err && <div className="docs-error">{err}</div>}
     </div>
   );
 }
