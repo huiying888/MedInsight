@@ -108,7 +108,7 @@ function highlightTextToHTML(text, highlights = []) {
   // Normalize: strip punctuation + collapse whitespace + lowercase
   function normalize(str) {
     return str
-      .replace(/[.,:;!?\-–—()\[\]{}'"`]/g, "") // remove punctuation
+      .replace(/[.,:;!?\ –—()\[\]{}'"`]/g, "") // remove punctuation
       .replace(/\s+/g, " ") // collapse whitespace
       .toLowerCase()
       .trim();
@@ -166,7 +166,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
+  const API_URL = process.env.REACT_APP_API_URL || "http://3.90.51.95:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
