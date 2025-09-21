@@ -5,6 +5,10 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+
 
 // Tell pdf.js where the worker is
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
@@ -20,31 +24,31 @@ const faqItems = [
 ];
 
 // Utility: format AI answers nicely
-function parseAnswerToJSX(answer) {
-  const cleanAnswer = answer.replace(/\*\*/g, "");
-  const items = cleanAnswer.split(/\d+\.\s+/).filter(Boolean);
+// function parseAnswerToJSX(answer) {
+//   const cleanAnswer = answer.replace(/\*\*/g, "");
+//   const items = cleanAnswer.split(/\d+\.\s+/).filter(Boolean);
 
-  return items.map((item, idx) => {
-    const lines = item.split(" - ").map((line) => line.trim());
+//   return items.map((item, idx) => {
+//     const lines = item.split(" - ").map((line) => line.trim());
 
-    return (
-      <div key={idx} className="patient-card">
-        {lines.map((line, i) => {
-          const [label, value] = line.split(/:(.+)/);
-          if (value) {
-            return (
-              <p key={i}>
-                <strong>{label}:</strong> {value}
-              </p>
-            );
-          } else {
-            return <p key={i}>{line}</p>;
-          }
-        })}
-      </div>
-    );
-  });
-}
+//     return (
+//       <div key={idx} className="patient-card">
+//         {lines.map((line, i) => {
+//           const [label, value] = line.split(/:(.+)/);
+//           if (value) {
+//             return (
+//               <p key={i}>
+//                 <strong>{label}:</strong> {value}
+//               </p>
+//             );
+//           } else {
+//             return <p key={i}>{line}</p>;
+//           }
+//         })}
+//       </div>
+//     );
+//   });
+// }
 
 const HighlightedTextLayer = ({ text, highlights }) => {
   // Split text into words + whitespace
@@ -167,7 +171,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
+  const API_URL = process.env.REACT_APP_API_URL || "http://34.207.252.129:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -194,17 +198,20 @@ export default function Chat() {
           const key = keyParts.join("/");
           url = `https://${bucket}.s3.us-east-1.amazonaws.com/${encodeURIComponent(key)}`;
         }
-        return { ...s, url };
+        return { ...s, url, file: s.file };
       });
+
+      // ✅ Reset sources for this query only
+      setLatestSources(sources);
 
       // Save message with sources
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: parseAnswerToJSX(data.answer), sources },
+        { role: "assistant", content: (data.answer), sources },
       ]);
 
       // ✅ Store latest sources for highlighting
-      setLatestSources(sources);
+      // setLatestSources(sources);
     } catch (err) {
       console.error(err);
       setChatHistory((h) => [
@@ -272,7 +279,12 @@ export default function Chat() {
           {chatHistory.map((m, i) => (
             <div key={i} className={`message-wrapper ${m.role}`}>
               <div className="message-bubble">
-                {m.content}
+                {m.role === "assistant" ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} linkBreaks>{m.content.replace(/\n/g, "  \n")}</ReactMarkdown>
+                ) : (
+                  m.content
+                )}
+
                 {m.role === "assistant" && m.sources?.length > 0 && (
                   <div
                     style={{
