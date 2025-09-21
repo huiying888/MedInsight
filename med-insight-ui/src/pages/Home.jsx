@@ -170,9 +170,7 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <span>© {new Date().getFullYear()} MedInsight</span>
-        <span className="dot">•</span>
-        <Link to="/about">About</Link>
+        <Link to="/about">About Us</Link>
       </footer>
     </div>
   );
