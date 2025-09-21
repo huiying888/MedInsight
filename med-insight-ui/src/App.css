@@ -1512,3 +1512,12 @@ html[data-theme="dark"] .cta-tertiary:hover {
 .hero-brand {
   margin-top: 0;       /* remove extra margin above logo */
 }
+
+.about-hero {
+  text-align: center;
+}
+
+.about-hero .brand-name {
+  display: block;
+  margin: 0 auto;
+}

@@ -23,7 +23,6 @@ export default function Login() {
       <div className="top-section" style={{ textAlign: "center" }}>
         <Brand size={56} />
         <h1 className="chat-header">Welcome back</h1>
-        <p className="chat-subtitle">Mock sign-in for demo (no backend required).</p>
       </div>
 
       <form onSubmit={onSubmit} style={card}>

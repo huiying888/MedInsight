@@ -15,14 +15,14 @@ export default function Home() {
             {/* Hero variant → large logo, small text */}
             <Brand size={60} variant="hero" />
             <div className="badge-row">
-              <span className="badge">AI medical PDF search</span>
+              <span className="badge">AI medical Medical Document search</span>
               <span className="badge">AWS-first</span>
-              <span className="badge">ap-southeast-5 🇲🇾</span>
+              <span className="badge">us-east-1</span>
             </div>
           </div>
           <h1 className="hero-title">
             Ask questions. Get answers.<br />
-            <span className="accent">From all your medical PDFs.</span>
+            <span className="accent">From all your medical documents.</span>
           </h1>
 
           <p className="hero-subtitle">
@@ -40,7 +40,7 @@ export default function Home() {
             ) : (
               <>
                 <Link className="cta-primary" to="/chat">Start asking</Link>
-                <Link className="cta-secondary" to="/upload">Upload documents</Link>
+                <Link className="cta-secondary" to="/upload">Upload PDFs</Link>
                 <Link className="cta-tertiary" to="/docs">Browse bucket</Link>
               </>
             )}
@@ -62,7 +62,7 @@ export default function Home() {
               <div className="stat-label">Faster lookups</div>
             </div>
             <div className="stat-card">
-              <div className="stat-num">0 PDFs</div>
+              <div className="stat-num">0 PDF</div>
               <div className="stat-label">Left unsearchable</div>
             </div>
             <div className="stat-card">
@@ -78,7 +78,7 @@ export default function Home() {
         <div className="feature-card">
           <div className="feature-icon" aria-hidden>🧠</div>
           <h3>Smart search</h3>
-          <p>Ask in natural language. We extract answers—even from tables and long PDFs.</p>
+          <p>Ask in natural language. We extract answers—even from tables and long Docs.</p>
         </div>
         <div className="feature-card">
           <div className="feature-icon" aria-hidden>🖨️</div>
