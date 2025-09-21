@@ -108,7 +108,7 @@ function highlightTextToHTML(text, highlights = []) {
   // Normalize: strip punctuation + collapse whitespace + lowercase
   function normalize(str) {
     return str
-      .replace(/[.,:;!?\ –—()\[\]{}'"`]/g, "") // remove punctuation
+      .replace(/[.,:;!?\-–—()\[\]{}'"`]/g, "") // remove punctuation
       .replace(/\s+/g, " ") // collapse whitespace
       .toLowerCase()
       .trim();
@@ -166,7 +166,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://3.90.51.95:3000/ask";
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -223,22 +223,26 @@ export default function Chat() {
   };
 
   // ✅ Extract highlights only from latest sources
-  const pdfHighlights = latestSources
-    .flatMap((s) =>
-      s.highlight
-        ? s.highlight
-          .split(/\n|[,;]+|\s{2,}|\s-\s/) // split on newlines, commas, semicolons, or " - "
+  const pdfHighlights = latestSources.flatMap((s) => {
+  if (!s.highlight) return [];
+
+  // Ensure highlight is a string
+  const highlightStr = Array.isArray(s.highlight)
+    ? s.highlight.join("\n")
+    : String(s.highlight);
+
+  return highlightStr
+    .split(/\n|[,;]+|\s{2,}|\s-\s/)
     .flatMap((h) => {
-      // If a colon exists, split into [left, right]
       if (h.includes(":")) {
         const [left, right] = h.split(":");
         return [left.trim(), right.trim()].filter(Boolean);
       }
       return [h.trim()];
     })
-    .filter(Boolean)
-        : []
-    );
+    .filter(Boolean);
+});
+
 
   useEffect(() => {
     console.log("🔍 Current highlights:", pdfHighlights);
