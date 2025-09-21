@@ -312,6 +312,13 @@ body, html, #root {
   cursor: pointer;
   line-height: 0;
   transition: background-color 0.3s ease;
+  border: none;
+  outline: none;
+}
+
+.upload-btn:focus {
+  outline: none;
+  box-shadow: none; /* optional: also remove focus glow */
 }
 
 .upload-btn:hover {
@@ -1017,4 +1024,478 @@ html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
 @media (max-width: 640px) {
   .stat-rail { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr; }
+}
+
+/* ==== Dark Theme Readability Upgrades ==== */
+html[data-theme="dark"] {
+  /* Slightly brighter text + higher contrast on muted/subtle text */
+  --text: #f1f4f8;          /* was #eaecef */
+  --text-strong: #ffffff;   /* was #f2f4f8 */
+  --text-muted: #d2d8e1;    /* was #c0c6d0 */
+  --text-subtle: #b7c0ce;   /* was #9aa3b5 */
+
+  /* Raise card & input surfaces a touch so text doesn’t “sink” */
+  --bg: #0e1217;            /* was #101317 */
+  --card-bg: #18202a;       /* was #161b22 */
+  --card-border: #2c3846;   /* was #29303a */
+  --input-bg: #1f2833;      /* was #1c222b */
+  --input-border: #36465a;  /* was #2a3240 */
+
+  /* Head cells and badges clearer against bg */
+  --table-head: #1d2733;    /* was #1b222c */
+
+  /* Navbar contrast */
+  --nav-bg: #0b1117;        /* was #0c1116 */
+  --nav-text: #f1f4f8;      /* was #eaecef */
+
+  /* Upload cards readability */
+  --upload-card-bg: #1a2230;      /* was #171d25 */
+  --upload-card-text: #f1f4f8;    /* was #eaecef */
+  --upload-card-subtext: #cbd3dd; /* was #c0c6d0 */
+}
+
+/* Apply the tokens globally (you already do this; just ensuring priority) */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .chat-page-container {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Headings remain brand-y, subtitles get more contrast */
+.chat-header { color: #e26d6d; }
+.chat-subtitle { color: var(--text-muted); }
+
+/* Buttons: ensure text contrast + visible focus */
+html[data-theme="dark"] .send-button,
+html[data-theme="dark"] .upload-btn {
+  background-color: #f19c9c; /* as you had */
+  color: #1a1a1a;            /* darker text for better contrast on light red */
+}
+html[data-theme="dark"] .send-button:hover:not(:disabled),
+html[data-theme="dark"] .upload-btn:hover {
+  background-color: #e26d6d;
+  color: #ffffff;
+}
+
+/* Input wrapper bar at bottom: lift surface and keep input text readable */
+html[data-theme="dark"] .chat-input-area-fixed {
+  background-color: var(--card-bg);
+  box-shadow: 0 -6px 16px rgba(0,0,0,0.45);
+}
+html[data-theme="dark"] .chat-input-wrapper {
+  background-color: var(--input-bg);
+}
+.chat-input {
+  color: var(--text);
+}
+.chat-input::placeholder {
+  color: var(--text-subtle);
+}
+
+/* FAQ / quick question chips – they were too low-contrast */
+html[data-theme="dark"] .faq-button {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--input-border);
+}
+html[data-theme="dark"] .faq-button:hover {
+  background-color: #2a394d; /* slightly lighter than before */
+  border-color: #6a8cc3;     /* clearer hover ring */
+  color: #fff;
+}
+
+/* “Sources” links in answers – make them readable & obviously clickable */
+.source-link {
+  color: #6aa9ff;           /* visible on dark bg */
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(106,169,255,0.5);
+}
+.source-link:hover {
+  color: #9cc4ff;
+  border-bottom-color: rgba(156,196,255,0.9);
+}
+
+/* Message bubbles – ensure body text isn’t too dim on dark */
+.message-bubble {
+  color: var(--text);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+/* Table headers and cell text in dark mode */
+html[data-theme="dark"] table { color: var(--text); }
+html[data-theme="dark"] thead tr { background: var(--table-head) !important; }
+
+/* Navbar – improve legibility */
+nav {
+  color: var(--nav-text);
+  background: var(--nav-bg);
+}
+
+/* Badges (hero/top) – avoid low-contrast gray-on-gray */
+.badge {
+  background: var(--table-head);
+  color: var(--text-muted);
+  border: 1px solid var(--card-border);
+}
+
+/* Upload cards – ensure titles and body copy pop */
+.upload-card {
+  background: var(--upload-card-bg);
+  color: var(--upload-card-text);
+  border-color: var(--card-border);
+}
+.upload-card p { color: var(--upload-card-subtext); }
+
+/* Hero background – keep subtle glow but avoid muddy overlay on dark */
+.hero {
+  background:
+    radial-gradient(1200px 300px at 50% -80px, rgba(226,109,109,0.18), transparent 60%),
+    var(--bg);
+  border-bottom: 1px solid var(--card-border);
+}
+
+/* ===== THEME TOKENS (Light/Dark) ===== */
+:root {
+  /* text */
+  --text: #1a1f28;
+  --text-strong: #0d1117;
+  --text-muted: #4b5563;
+  --text-subtle: #6b7280;
+
+  /* surfaces */
+  --bg: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --input-bg: #f8fafc;
+  --input-border: #d1d5db;
+
+  /* navbar */
+  --nav-bg: #ffffff;
+  --nav-text: #0f172a;
+  --nav-active-bg: #e26d6d;
+  --nav-active-text: #ffffff;
+
+  /* accents */
+  --accent: #e26d6d;
+  --link: #1358db;
+}
+
+html[data-theme="dark"] {
+  --text: #f3f6fb;
+  --text-strong: #ffffff;
+  --text-muted: #d7dce6;
+  --text-subtle: #b7c0ce;
+
+  --bg: #0e1217;
+  --card-bg: #161b22;
+  --card-border: #2a3340;
+  --input-bg: #1b2430;
+  --input-border: #36465a;
+
+  --nav-bg: #0b1117;
+  --nav-text: #f3f6fb;
+
+  --accent: #e26d6d;
+  --link: #9cc4ff;
+}
+
+/* ===== GLOBAL APPLICATION ===== */
+body, .home { background: var(--bg); color: var(--text); }
+
+/* Fix general links & strong text */
+a { color: var(--link); }
+h1, h2, h3, h4, h5, h6, strong { color: var(--text-strong); }
+
+/* ===== NAVBAR ===== */
+nav {
+  background: var(--nav-bg) !important;
+  color: var(--nav-text) !important;
+  border-bottom: 1px solid var(--card-border) !important;
+}
+nav a, nav button, nav span { color: var(--nav-text) !important; }
+nav a[aria-current="page"] {
+  background: var(--nav-active-bg) !important;
+  color: var(--nav-active-text) !important;
+}
+
+/* navbar pills look crisp on both themes */
+nav a {
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+/* ===== HERO ===== */
+.hero, .hero--fancy { background: var(--bg); color: var(--text); }
+.hero-title .accent {
+  background: linear-gradient(90deg, var(--accent), #5181ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-subtitle { color: var(--text-muted); }
+
+/* badges readable on both themes */
+.badge-row { gap: 8px; display: inline-flex; flex-wrap: wrap; }
+.badge {
+  background: color-mix(in srgb, var(--card-bg) 70%, #fff 30%);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  padding: 6px 10px; border-radius: 999px; font-size: 12px;
+}
+html[data-theme="dark"] .badge {
+  background: color-mix(in srgb, var(--card-bg) 85%, #fff 15%);
+  color: var(--text-muted);
+}
+
+/* ===== FEATURE CARDS ===== */
+.features { color: var(--text); }
+.features .feature-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+.features .feature-card p { color: var(--text-muted); }
+
+/* ===== STATS ===== */
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+.stat-label { color: var(--text-muted); }
+
+/* ===== “HOW IT WORKS” rail ===== */
+.how, .how-v2, .hiw-rail, .hiw-step { color: var(--text); }
+.hiw-step {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.hiw-meta, .hiw-list { color: var(--text-muted); }
+
+/* ===== FAQ ===== */
+.faq-item {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+.faq-item p { color: var(--text-muted); }
+
+/* ===== CHAT INPUT & BUTTONS ===== */
+.chat-subtitle { color: var(--text-muted); }
+.chat-input-area-fixed { background: var(--card-bg); }
+.chat-input-wrapper { background: var(--input-bg); border: 1px solid var(--input-border); }
+.chat-input { color: var(--text); }
+.chat-input::placeholder { color: var(--text-subtle); }
+.send-button { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.send-button:disabled { opacity: .6; }
+
+/* upload round button */
+.upload-btn {
+  border: none; outline: none;
+  background-color: var(--accent); color: #fff;
+}
+.upload-btn:focus { outline: none; box-shadow: none; }
+
+/* ===== MESSAGE BUBBLES ===== */
+.message-bubble {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+
+/* ===== SOURCES LINKS ===== */
+.source-link {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--link) 60%, transparent);
+}
+.source-link:hover {
+  color: color-mix(in srgb, var(--link) 85%, #000);
+  border-bottom-color: currentColor;
+}
+
+/* ===== FOOTER ===== */
+.site-footer { color: var(--text-muted); }
+.site-footer a { color: var(--link); }
+
+/* Only affect Logout button in dark mode */
+/* Logout button in dark mode */
+html[data-theme="dark"] .logout-btn {
+  color: #000 !important;          /* black text */
+  background: #f5f5f5;             /* keep light bg for contrast */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Hover effect in dark mode */
+html[data-theme="dark"] .logout-btn:hover {
+  background: #e0e0e0;             /* slightly darker bg */
+  color: #111;                     /* slightly darker text */
+  cursor: pointer;
+}
+
+html[data-theme="dark"] .trust-item {
+  color: #fff;
+}
+
+/* Dark mode styling for cta-tertiary */
+html[data-theme="dark"] .cta-tertiary {
+  background: transparent;
+  color: #f3f6fb;              /* light text for contrast */
+  border: 1px dashed #555;     /* softer dashed border on dark bg */
+}
+
+html[data-theme="dark"] .cta-tertiary:hover {
+  background: rgba(255, 255, 255, 0.05); /* faint hover glow */
+  border-color: #888;                    /* lighter border on hover */
+}
+/* ===== Docs Explorer Layout ===== */
+.docs-explorer {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+  color: var(--text);
+}
+
+.docs-sidebar {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 12px;
+  position: sticky;
+  top: 66px; /* below navbar */
+  height: calc(100vh - 90px);
+  overflow: auto;
+}
+
+.docs-side-head { margin-bottom: 10px; }
+.docs-bucket { font-weight: 700; }
+.docs-region { color: var(--text-muted); }
+
+.docs-side-actions { display: grid; gap: 6px; margin-bottom: 12px; }
+.docs-side-group { margin-top: 8px; }
+.docs-side-title { font-weight: 700; margin-bottom: 6px; }
+.docs-side-list { display: grid; gap: 4px; }
+
+.docs-side-item {
+  text-align: left;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.docs-side-item:hover { background: color-mix(in srgb, var(--input-bg) 85%, #fff 15%); }
+.docs-side-item.active {
+  border-color: #e26d6d;
+  box-shadow: 0 0 0 2px rgba(226,109,109,0.15) inset;
+}
+.folder-emoji { margin-right: 6px; }
+
+.docs-main {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 60vh;
+}
+
+/* Top bar */
+.docs-topbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.docs-crumbs { font-weight: 600; }
+.docs-crumb-link { color: #e26d6d; text-decoration: none; }
+.docs-crumb-sep { opacity: 0.6; }
+.docs-controls { display: flex; gap: 8px; align-items: center; }
+
+.docs-search {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  min-width: 220px;
+}
+.docs-select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+}
+
+/* Folders */
+.docs-folders.grid .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.docs-folders.list .folder-list { display: grid; gap: 6px; }
+
+.folder-card, .folder-row {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.folder-card:hover, .folder-row:hover {
+  background: color-mix(in srgb, var(--input-bg) 85%, #fff 15%);
+  border-color: #e26d6d;
+}
+
+.folder-card { flex-direction: column; align-items: flex-start; }
+.folder-icon { font-size: 28px; line-height: 1; }
+.folder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Files */
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+.file-card {
+  display: block;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.file-card:hover { background: color-mix(in srgb, var(--input-bg) 85%, #fff 15%); border-color: #e26d6d; }
+.file-icon { font-size: 28px; }
+.file-name { margin-top: 6px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-meta { margin-top: 6px; color: var(--text-subtle); display: flex; gap: 8px; flex-wrap: wrap; }
+
+.file-table-wrap { overflow-x: auto; margin-top: 12px; }
+.file-table { width: 100%; border-collapse: collapse; }
+.file-table th, .file-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--card-border); }
+.file-table thead tr { background: var(--table-head, #f5f5f5); }
+
+/* Pager */
+.docs-pager { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; }
+.docs-page-label { color: var(--text); }
+
+/* Empty / Error / Loading */
+.docs-empty, .docs-error { margin: 10px 0; color: var(--text-muted); }
+.docs-error { color: crimson; }
+
+.docs-loading {
+  position: fixed; inset: 0;
+  background: rgba(46,46,46,0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .docs-explorer { grid-template-columns: 1fr; }
+  .docs-sidebar { position: relative; height: auto; }
 }

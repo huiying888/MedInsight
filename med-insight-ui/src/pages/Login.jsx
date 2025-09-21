@@ -29,12 +29,12 @@ export default function Login() {
       <form onSubmit={onSubmit} style={card}>
         <label style={label}>Email</label>
         <input style={input} type="email" placeholder="you@clinic.my" value={email} onChange={e=>setEmail(e.target.value)} required />
-
+        <br/>
         <label style={label}>Password</label>
         <input style={input} type="password" placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} required />
-
+        <br/>
         {err && <p style={{ color: "crimson", marginTop: 8 }}>{err}</p>}
-
+        <br/>
         <button className="send-button" type="submit" style={{ padding: "10px 18px", marginTop: 10 }}>
           Sign in
         </button>
@@ -47,6 +47,6 @@ export default function Login() {
   );
 }
 
-const card  = { maxWidth: 420, margin: "0 auto", background: "#fff", border: "1px solid #eee", borderRadius: 16, padding: 16 };
-const input = { padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", outline: "none", background: "#f5f5f5", width: "100%", marginBottom: 10 };
-const label = { fontSize: 14, color: "#444", margin: "6px 0" };
+const card  = { maxWidth: 420, margin: "0 auto", background: "#fff", border: "1px solid #eee", borderRadius: 16, padding: 16, width: "50%" };
+const input = { padding: "10px 12px", borderRadius: 12, border: "1px solid #ddd", outline: "none", background: "#f5f5f5", width: "75%", marginBottom: 10 };
+const label = { fontSize: 14, color: "#444", margin: "6px 0", display: "inline-block", width: "150px"};
