@@ -24,12 +24,15 @@ Healthcare professionals in Malaysia face the challenge of:
 ---
 
 ## Solution
+
 MedInsight solves this by:
-- Providing a seamless plug-in layer that integrates with existing hospital HIS/EMR systems without replacement.  
-- Smart PDF extraction using OCR + NLP to handle scanned and digital PDFs, extracting tables, charts, and free text into queryable data.  
-- Natural language, chat-style query interface allowing doctors to ask questions in plain English or Malay (e.g., “Show me Mr. Ali’s last 3 HbA1c results.”).  
-- Contextual answering that highlights relevant PDF sections, reducing scrolling and manual searching.  
-- Turning unstructured medical documents into an accessible knowledge base for faster, more confident clinical decisions.
+
+- Providing a seamless plug-in layer that integrates with existing hospital HIS/EMR systems without requiring replacement.  
+- **Smart PDF extraction** using OCR + NLP to handle both scanned and digital PDFs, extracting tables, charts, and free text into queryable data.  
+- **Upload PDFs** directly via the interface: files are automatically saved to the cloud (AWS S3) and trigger OCR and embedding generation for meaningful, semantic queries.  
+- **Natural language, chat-style query interface** allowing doctors to ask questions in plain English or Malay (e.g., “Show me Mr. Ali’s last 3 HbA1c results.”).  
+- **Contextual answering** that highlights relevant PDF sections, reducing scrolling and manual searching.  
+- Transforming unstructured medical documents into an accessible knowledge base for faster, more confident clinical decisions.
 
 ---
 
