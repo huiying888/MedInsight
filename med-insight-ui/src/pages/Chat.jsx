@@ -11,6 +11,7 @@ const faqItems = [
   { id: 3, q: "👩🏼‍⚕️ List the patient information" },
   { id: 4, q: "🩸 Show me last lab report result" },
 ];
+
 function parseAnswerToJSX(answer) {
   // Remove all ** markers
   const cleanAnswer = answer.replace(/\*\*/g, "");
@@ -48,6 +49,7 @@ export default function Chat() {
     { role: "assistant", content: defaultAssistantMessage },
   ]);
   const [loading, setLoading] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState(null);
   const messagesEndRef = useRef(null);
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
 
@@ -68,10 +70,20 @@ export default function Chat() {
     try {
       const { data } = await axios.post(API_URL, { question: queryText });
 
-      // Only display the assistant answer (omit contexts)
+      // Convert S3 URIs (s3://bucket/key) → HTTPS URLs
+      const sources = (data.sources || []).map((s) => {
+        let url = s.url;
+        if (url.startsWith("s3://")) {
+          const [, bucket, ...keyParts] = url.split("/");
+          const key = keyParts.join("/");
+          url = `https://${bucket}.s3.us-east-1.amazonaws.com/${encodeURIComponent(key)}`;
+        }
+        return { ...s, url };
+      });
+
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: parseAnswerToJSX(data.answer), sources: data.sources || [] },
+        { role: "assistant", content: parseAnswerToJSX(data.answer), sources },
       ]);
     } catch (err) {
       console.error(err);
@@ -92,103 +104,113 @@ export default function Chat() {
   };
 
   return (
-    <div className="chat-page-container">
-      <div className="top-section">
-        <h1 className="chat-header">💬 MedInsightAI</h1>
-        <p className="chat-subtitle">
-          I'm here to help you uncover business insights from your medical documents.
-        </p>
-        <div className="faq-grid">
-          {faqItems.map((item) => (
-            <button
-              key={item.id}
-              className="faq-button"
-              onClick={() => handleFaqClick(item.q)}
-            >
-              {item.q}
-            </button>
+    <div className="chat-layout">
+      {/* Left: Chat Section */}
+      <div className={`chat-panel ${selectedPdf ? "shrunk" : ""}`}>
+        <div className="top-section">
+          <h1 className="chat-header">💬 MedInsightAI</h1>
+          <p className="chat-subtitle">
+            I'm here to help you uncover business insights from your medical documents.
+          </p>
+          <div className="faq-grid">
+            {faqItems.map((item) => (
+              <button
+                key={item.id}
+                className="faq-button"
+                onClick={() => handleFaqClick(item.q)}
+              >
+                {item.q}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="chat-history-container">
+          {chatHistory.map((m, i) => (
+            <div key={i} className={`message-wrapper ${m.role}`}>
+              <div className="message-bubble">
+                {m.content}
+                {m.role === "assistant" && m.sources?.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      borderTop: "1px solid #eee",
+                      paddingTop: 8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
+                    <ol style={{ margin: 0, paddingLeft: 18 }}>
+                      {m.sources.map((s, idx) => (
+                        <li key={idx} style={{ marginBottom: 8 }}>
+                          <button
+                            className="source-link"
+                            onClick={() => setSelectedPdf(s.url)}
+                          >
+                            {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
+          {loading && (
+            <div className="message-wrapper assistant">
+              <div className="message-bubble loading-bubble">
+                <div className="loading-dot" />
+                <div className="loading-dot" />
+                <div className="loading-dot" />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="chat-input-area-fixed">
+          <div className="chat-input-wrapper">
+            <label htmlFor="file-upload" className="upload-btn" title="Upload PDF">
+              +
+              <input
+                id="file-upload"
+                type="file"
+                onChange={handleFileUpload}
+                accept=".pdf,.txt"
+                style={{ display: "none" }}
+              />
+            </label>
+            <input
+              type="text"
+              className="chat-input"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendQuery(q)}
+              placeholder="Ask me something about your documents..."
+              disabled={loading}
+            />
+            <button
+              className="send-button"
+              onClick={() => sendQuery(q)}
+              disabled={loading || !q.trim()}
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="chat-history-container">
-        {chatHistory.map((m, i) => (
-          <div key={i} className={`message-wrapper ${m.role}`}>
-            <div className="message-bubble">
-              {m.content}
-
-              {/* Render sources if available */}
-              {m.role === "assistant" && m.sources && m.sources.length > 0 && (
-                <div className="sources-block">
-                  <strong>📚 Sources:</strong>
-                  <ul>
-                    {m.sources.map((s, idx) => (
-                      <li key={idx}>
-                        <a
-                          href={s.source}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {s.file} (Page {s.page})
-                        </a>
-                        <div className="highlight">🔎 {s.highlight}</div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {/* {chatHistory.map((m, i) => (
-          <div key={i} className={`message-wrapper ${m.role}`}>
-            <div className="message-bubble">
-              {m.content}
-
-              </div>
-          </div>
-        ))} */}
-        {loading && (
-          <div className="message-wrapper assistant">
-            <div className="message-bubble loading-bubble">
-              <div className="loading-dot" />
-              <div className="loading-dot" />
-              <div className="loading-dot" />
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="chat-input-area-fixed">
-        <div className="chat-input-wrapper">
-          <label htmlFor="file-upload" className="upload-btn" title="Upload PDF">
-            +
-            <input
-              id="file-upload"
-              type="file"
-              onChange={handleFileUpload}
-              accept=".pdf,.txt"
-              style={{ display: "none" }}
-            />
-          </label>
-          <input
-            type="text"
-            className="chat-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendQuery(q)}
-            placeholder="Ask me something about your documents..."
-            disabled={loading}
-          />
-          <button
-            className="send-button"
-            onClick={() => sendQuery(q)}
-            disabled={loading || !q.trim()}
-          >
-            Send
+      {/* Right: PDF Viewer */}
+      <div className={`pdf-viewer ${selectedPdf ? "open" : ""}`}>
+        <div className="pdf-header">
+          <strong>📄 PDF Viewer</strong>
+          <button onClick={() => setSelectedPdf(null)} className="close-btn">
+            ❌
           </button>
         </div>
+        {selectedPdf && (
+          <iframe src={selectedPdf} title="PDF Viewer" className="pdf-iframe" />
+        )}
       </div>
     </div>
   );

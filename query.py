@@ -7,8 +7,8 @@ import faiss
 import numpy as np
 import spacy
 from typing import List, Dict
+from urllib.parse import quote
 import re
-
 
 # -------------------------------
 # Config
@@ -19,6 +19,9 @@ LLM_MODEL = "amazon.nova-pro-v1:0"
 S3_INPUT_BUCKET = "meddoc-processed"        # input (your JSONs)
 S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metadata)
 
+SOURCE_BUCKET = os.getenv("SOURCE_BUCKET", "meddoc-raw")
+SOURCE_REGION = os.getenv("SOURCE_REGION", os.getenv("AWS_REGION", "us-east-1"))
+
 INDEX_FILE = "index.faiss"
 META_FILE = "metadata.json"
 
@@ -26,7 +29,44 @@ META_FILE = "metadata.json"
 # Clients
 # -------------------------------
 s3 = boto3.client("s3", region_name=REGION)
+s3_sign = boto3.client("s3", region_name=SOURCE_REGION)
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
+
+def normalize_s3_key(raw: str) -> str | None:
+    """Return a clean S3 key like 'patients/Patient Data 15.pdf' from various inputs."""
+    if not raw:
+        return None
+    key = str(raw).strip()
+
+    # 1) If full s3:// URL, drop scheme + bucket
+    if key.startswith("s3://"):
+        without_scheme = key[5:]
+        parts = without_scheme.split("/", 1)  # ["bucket", "rest/of/key"]
+        key = parts[1] if len(parts) == 2 else ""
+
+    # 2) If https URL to S3 website/virtual-hosted style, strip origin
+    if key.startswith("https://"):
+        m = re.search(r"\.amazonaws\.com/(.+)$", key)
+        if m:
+            key = m.group(1)
+
+    # 3) Strip fragment and query (important!)
+    key = key.split("#", 1)[0]
+    key = key.split("?", 1)[0]
+
+    # 4) Remove any accidental leading slash
+    return key.lstrip("/")
+
+def build_public_url(key: str) -> str:
+    base = f"https://{SOURCE_BUCKET}.s3.{SOURCE_REGION}.amazonaws.com"
+    return f"{base}/{quote(key, safe='/')}"  # keep "/" but encode spaces etc.
+
+def build_presigned_get(key: str, ttl_sec: int = 600) -> str:
+    return s3_sign.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": SOURCE_BUCKET, "Key": key},
+        ExpiresIn=ttl_sec,
+    )
 
 # -------------------------------
 # Get embedding from Bedrock
@@ -225,23 +265,30 @@ Answer:"""
     sources = []
     seen = {}
     for c in contexts:
-        highlight = extract_highlight(question, c["text"])
-        print("Extracted Highlight:", highlight)
-        highlight = highlight.strip().lower()
-        if highlight and "n/a" not in highlight.lower():
-            key = (c.get("file"), c.get("page"))
-            if key not in seen:
-                seen[key] = {
-                    "file": c.get("file"),
-                    "page": c.get("page"),
-                    "source": c.get("source"),
-                    "highlight": set()  # use set to deduplicate
-                }
-            seen[key]["highlight"].add(highlight)
-    # flatten into final list
-    for val in seen.values():
-        val["highlight"] = " | ".join(val["highlight"])  # merge multiple into one string
-        sources.append(val)
+        hl = extract_highlight(question, c["text"]) or ""
+        norm = hl.strip().lower()
+        if not norm or "n/a" in norm:
+            continue
+
+        raw = c.get("source") or c.get("s3_key") or c.get("file") or ""
+        key = normalize_s3_key(raw)
+        if not key:
+            continue
+
+        # choose presigned (private bucket) or public
+        url = build_presigned_get(key, ttl_sec=600)
+        # IMPORTANT: Append #page AFTER signing (not part of the key/signature)
+        page = c.get("page")
+        if page:
+            url = f"{url}#page={page}"
+
+        sources.append({
+            "file": c.get("file") or key.split("/")[-1],
+            "page": page,
+            "key": key,
+            "url": url,
+            "highlight": hl.strip(),
+        })
 
     return answer, sources
 
