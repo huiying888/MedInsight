@@ -255,6 +255,8 @@ Answer:"""
             "url": url,
             "highlight": hl.strip(),
         })
+        # print all appended sources
+        print("Appended source:", sources[-1])
 
     return answer, sources
 
