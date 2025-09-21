@@ -12,14 +12,14 @@ export default function Home() {
         <div className="hero-bg" />
         <div className="hero-inner">
           <div className="hero-brand">
-            <Brand size={64} />
+            {/* Hero variant → large logo, small text */}
+            <Brand size={85} variant="hero" />
             <div className="badge-row">
               <span className="badge">AI medical PDF search</span>
               <span className="badge">AWS-first</span>
               <span className="badge">ap-southeast-5 🇲🇾</span>
             </div>
           </div>
-
           <h1 className="hero-title">
             Ask questions. Get answers.<br />
             <span className="accent">From all your medical PDFs.</span>

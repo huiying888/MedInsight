@@ -258,7 +258,7 @@ export default function Chat() {
       {/* Left: Chat Section */}
       <div className={`chat-panel ${selectedPdf ? "shrunk" : ""}`}>
         <div className="top-section">
-          <h1 className="chat-header">💬 MedInsightAI</h1>
+          <h1 className="chat-header">💬 MedInsight</h1>
           <p className="chat-subtitle">
             I'm here to help you uncover business insights from your medical documents.
           </p>
