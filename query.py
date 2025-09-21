@@ -6,7 +6,7 @@ import botocore
 import faiss
 import numpy as np
 import spacy
-from typing import List, Dict
+from typing import List, Dict, Optional
 from urllib.parse import quote
 import re
 
@@ -32,7 +32,7 @@ s3 = boto3.client("s3", region_name=REGION)
 s3_sign = boto3.client("s3", region_name=SOURCE_REGION)
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
-def normalize_s3_key(raw: str) -> str | None:
+def normalize_s3_key(raw: str) -> Optional[str]:
     """Return a clean S3 key like 'patients/Patient Data 15.pdf' from various inputs."""
     if not raw:
         return None
