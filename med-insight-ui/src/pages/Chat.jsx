@@ -170,7 +170,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
+  const API_URL = process.env.REACT_APP_API_URL || "http://34.207.252.129:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({

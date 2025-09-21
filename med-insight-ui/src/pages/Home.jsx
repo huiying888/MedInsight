@@ -1,18 +1,22 @@
 import { Link } from "react-router-dom";
 import Brand from "../components/Brand";
+import { getUser } from "../utils/authMock";
 
 export default function Home() {
+  const user = getUser();
+
   return (
     <div className="home">
       {/* HERO */}
-      <section className="hero">
+      <section className="hero hero--fancy">
+        <div className="hero-bg" />
         <div className="hero-inner">
           <div className="hero-brand">
-            <Brand size={56} />
+            <Brand size={64} />
             <div className="badge-row">
               <span className="badge">AI medical PDF search</span>
               <span className="badge">AWS-first</span>
-              <span className="badge">us-east-1</span>
+              <span className="badge">ap-southeast-5 🇲🇾</span>
             </div>
           </div>
 
@@ -26,33 +30,68 @@ export default function Home() {
             Natural-language queries. Fast lookups. Better decisions.
           </p>
 
+          {/* CTA: if not logged in, nudge to login/register; else go straight to chat */}
           <div className="cta-row">
-            <Link className="cta-primary" to="/chat">Start asking</Link>
-            <Link className="cta-secondary" to="/upload">Upload documents</Link>
-            <Link className="cta-tertiary" to="/docs">Browse bucket</Link>
+            {!user ? (
+              <>
+                <Link className="cta-primary" to="/login">Login to start</Link>
+                <Link className="cta-secondary" to="/register">Create account</Link>
+              </>
+            ) : (
+              <>
+                <Link className="cta-primary" to="/chat">Start asking</Link>
+                <Link className="cta-secondary" to="/upload">Upload documents</Link>
+                <Link className="cta-tertiary" to="/docs">Browse bucket</Link>
+              </>
+            )}
           </div>
 
-          <p className="mini-help">
-            Tip: set your default folder and theme in <Link to="/settings">Settings</Link>.
-          </p>
+          {/* quick trust mini-row */}
+          <div className="trust-row">
+            <div className="trust-item">🔒 Privacy-first (S3 + least-privilege)</div>
+            <div className="dot">•</div>
+            <div className="trust-item">📄 OCR-ready (scanned PDFs supported)</div>
+            <div className="dot">•</div>
+            <div className="trust-item">💸 Credit-friendly (batching & caching)</div>
+          </div>
+
+          {/* animated stats */}
+          <div className="stat-rail">
+            <div className="stat-card">
+              <div className="stat-num">10×</div>
+              <div className="stat-label">Faster lookups</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-num">0 PDFs</div>
+              <div className="stat-label">Left unsearchable</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-num">1 Click</div>
+              <div className="stat-label">Citations to source</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section className="features">
+      {/* FEATURE GRID */}
+      <section className="features features--glass">
         <div className="feature-card">
+          <div className="feature-icon" aria-hidden>🧠</div>
           <h3>Smart search</h3>
-          <p>Ask in natural language. We extract answers even from tables and long PDFs.</p>
+          <p>Ask in natural language. We extract answers—even from tables and long PDFs.</p>
         </div>
         <div className="feature-card">
+          <div className="feature-icon" aria-hidden>🖨️</div>
           <h3>Works with scans</h3>
-          <p>OCR-ready pipeline for scanned/legacy docs so nothing gets missed.</p>
+          <p>OCR pipeline for scanned/legacy docs so nothing gets missed.</p>
         </div>
         <div className="feature-card">
+          <div className="feature-icon" aria-hidden>🔒</div>
           <h3>Privacy-first</h3>
           <p>S3 storage, least-privilege access. Malaysia region prioritized.</p>
         </div>
         <div className="feature-card">
+          <div className="feature-icon" aria-hidden>💡</div>
           <h3>Budget aware</h3>
           <p>Designed to run within tight credits—batching, caching, and minimal calls.</p>
         </div>
@@ -113,6 +152,22 @@ export default function Home() {
         </div>
       </section>
 
+      {/* MINI FAQ */}
+      <section className="faq">
+        <h2>FAQ</h2>
+        <details className="faq-item" open>
+          <summary>Is this safe for patient data?</summary>
+          <p>Yes. Documents live in your S3 bucket. Access follows least-privilege IAM and never leaves your AWS account during processing.</p>
+        </details>
+        <details className="faq-item">
+          <summary>Does it work with scanned PDFs?</summary>
+          <p>Absolutely. Our OCR stage extracts text from scanned/legacy documents so they become searchable.</p>
+        </details>
+        <details className="faq-item">
+          <summary>What about costs?</summary>
+          <p>We batch operations, cache results, and limit calls to stay within tight credits—ideal for hackathons and pilots.</p>
+        </details>
+      </section>
 
       <footer className="site-footer">
         <span>© {new Date().getFullYear()} MedInsight</span>
