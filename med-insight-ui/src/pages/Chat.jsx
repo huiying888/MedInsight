@@ -94,7 +94,8 @@ function escapeHtml(str) {
 function highlightTextToHTML(text, highlights = []) {
   if (!text) return "";
 
-  function escapeHtmlInner(str) {
+  // Escape HTML safely
+  function escapeHtml(str) {
     return str.replace(/[&<>"']/g, (m) => ({
       "&": "&amp;",
       "<": "&lt;",
@@ -104,40 +105,57 @@ function highlightTextToHTML(text, highlights = []) {
     }[m]));
   }
 
-  // Normalize for matching (ignore bullets, symbols, punctuation)
+  // Normalize: strip punctuation + collapse whitespace + lowercase
   function normalize(str) {
     return str
-      .normalize("NFKD")
-      .replace(/[\u2022•■◆●►✓✔]/g, "") // remove small symbols/bullets
-      .replace(/[“”‘’]/g, '"')
-      .replace(/®|™|©/g, "")
-      .replace(/[.,:;!?–—()\[\]{}'"`]/g, "")
-      .replace(/\s+/g, " ")
+      .replace(/[.,:;!?\ –—()\[\]{}'"`]/g, "") // remove punctuation
+      .replace(/\s+/g, " ") // collapse whitespace
       .toLowerCase()
       .trim();
   }
 
-  // Only keep meaningful highlights (remove too-short symbols)
-  const cleanedHighlights = highlights
-    .map((h) => h.replace(/[\u2022•■◆●►✓✔]/g, "").trim())
-    .filter((h) => h.length > 1);
+  // Sort highlights by length (longer first = phrase priority)
+  const sorted = Array.from(new Set(highlights.map((h) => h.trim()).filter(Boolean)))
+    .sort((a, b) => b.length - a.length);
 
-  if (cleanedHighlights.length === 0) return escapeHtmlInner(text);
+  console.log("🔍 highlightTextToHTML: highlights =", sorted);
 
-  // Build regex from cleaned highlights
-  const pattern = cleanedHighlights
-    .map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) // escape regex
-    .join("|");
+  if (sorted.length === 0) return escapeHtml(text);
 
+  // Build regex for all highlights (normalize + flexible spaces)
+  const normalizedHighlights = sorted.map(normalize);
+  const pattern = normalizedHighlights.map((s) => s.replace(/ /g, "\\s+")).join("|");
   const re = new RegExp(pattern, "gi");
 
-  // Highlight matching text
-  return escapeHtmlInner(text).replace(re, (match) => {
-    return `<mark style="background-color:yellow">${match}</mark>`;
-  });
+  console.log("🧩 highlightTextToHTML: regex =", re);
+
+  // Work on normalized text but map back to original string
+  const normalizedText = normalize(text);
+  let result = "";
+  let lastIndex = 0;
+
+  let match;
+  while ((match = re.exec(normalizedText)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+
+    // Map normalized index back to original substring
+    const origSub = text.substring(start, end);
+
+    // Append plain + highlighted
+    result += escapeHtml(text.slice(lastIndex, start));
+    result += `<mark style="background-color:yellow">${escapeHtml(origSub)}</mark>`;
+
+    lastIndex = end;
+  }
+
+  // Append trailing part
+  result += escapeHtml(text.slice(lastIndex));
+
+  console.log("✅ highlightTextToHTML: result preview =", result);
+
+  return result;
 }
-
-
 
 export default function Chat() {
   const [q, setQ] = useState("");
@@ -210,15 +228,15 @@ export default function Chat() {
       s.highlight
         ? s.highlight
           .split(/\n|[,;]+|\s{2,}|\s-\s/) // split on newlines, commas, semicolons, or " - "
-          .flatMap((h) => {
-            // If a colon exists, split into [left, right]
-            if (h.includes(":")) {
-              const [left, right] = h.split(":");
-              return [left.trim(), right.trim()].filter(Boolean);
-            }
-            return [h.trim()];
-          })
-          .filter(Boolean)
+    .flatMap((h) => {
+      // If a colon exists, split into [left, right]
+      if (h.includes(":")) {
+        const [left, right] = h.split(":");
+        return [left.trim(), right.trim()].filter(Boolean);
+      }
+      return [h.trim()];
+    })
+    .filter(Boolean)
         : []
     );
 
@@ -266,11 +284,11 @@ export default function Chat() {
                       {m.sources.map((s, idx) => (
                         <li key={idx} style={{ marginBottom: 8 }}>
                           <button
-                            className="source-link"
-                            onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
-                          >
-                            {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
-                          </button>
+  className="source-link"
+  onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
+>
+  {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+</button>
                         </li>
                       ))}
                     </ol>
@@ -339,38 +357,19 @@ export default function Chat() {
                 renderTextLayer={true}   // ✅ force text layer
                 renderAnnotationLayer={false} // optional: cleaner view
                 customTextRenderer={(textItem) => {
-                  const textStr = textItem.str;
+                  // Debug: this should run for each text item in the page's text layer
+                  console.log("📌 customTextRenderer invoked; textItem:", textItem);
+                  console.log("🔍 current pdfHighlights:", pdfHighlights);
 
-                  // Normalize helper
-                  const normalize = (s) =>
-                    s
-                      .normalize("NFKD")
-                      .replace(/[\u2022•■◆●►✓✔]/g, "")
-                      .replace(/[“”‘’]/g, '"')
-                      .replace(/®|™|©/g, "")
-                      .replace(/[.,:;!?\–—()\[\]{}'"`]/g, "")
-                      .replace(/\s+/g, " ")
-                      .toLowerCase()
-                      .trim();
-
-                  const normalizedText = normalize(textStr);
-
-                  // Check if any highlight is included
-                  let matched = false;
-                  for (let h of pdfHighlights) {
-                    if (!h) continue;
-                    if (normalize(h).includes(normalizedText) || normalizedText.includes(normalize(h))) {
-                      matched = true;
-                      break;
-                    }
+                  // Return HTML string (react-pdf applies it as innerHTML)
+                  try {
+                    return highlightTextToHTML(textItem.str, pdfHighlights);
+                  } catch (e) {
+                    console.error("Error in customTextRenderer:", e);
+                    // Fallback to plain escaped text
+                    return escapeHtml(textItem.str || "");
                   }
-
-                  if (matched) {
-                    return `<mark style="background-color:yellow">${textStr}</mark>`;
-                  }
-                  return escapeHtml(textStr);
                 }}
-
               />
 
 
