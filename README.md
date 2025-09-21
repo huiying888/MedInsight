@@ -44,8 +44,8 @@ MedInsight solves this by:
 - Backend/API: FlaskAPI, AWS EC2, PM2
 - Database: AWS S3
 - AI Models: AWS Bedrock (Nova Pro, Titan Embeddings G1 - Text)
-- Others: PyMuPDF (text extraction), Tesseract OCR (image text extraction), FAISS (vector similarity search), Hybrid search (KNN + string matching)
-- 
+- Others (Open Source): PyMuPDF (text extraction), Tesseract OCR (image text extraction), FAISS (vector similarity search), Hybrid search (KNN + string matching)
+  
 ---
 
 ## System Architecture
