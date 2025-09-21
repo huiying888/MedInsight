@@ -211,12 +211,12 @@ def generate_answer_with_sources(question, contexts):
 
     # --- Filter contexts for that patient only ---
     filtered_contexts = contexts
-    if patient_name:
-        filtered_contexts = [
-            c for c in contexts if patient_name in c["text"].lower()
-        ]
-        if not filtered_contexts:
-            return f"No records found for patient {patient_name.title()}.", []
+    # if patient_name:
+    #     filtered_contexts = [
+    #         c for c in contexts if patient_name in c["text"].lower()
+    #     ]
+    #     if not filtered_contexts:
+    #         return f"No records found for patient {patient_name.title()}.", []
 
     context_text = "\n\n".join([c["text"] for c in filtered_contexts])
     prompt = f"""You are a medical assistant.
@@ -255,7 +255,7 @@ Answer:"""
         modelId=LLM_MODEL,
         body=json.dumps({
             "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": 512, "temperature": 0.2, "topP": 0.9}
+            "inferenceConfig": {"maxTokens": 1500, "temperature": 0.2, "topP": 0.9}
         })
     )
     resp_body = json.loads(response["body"].read())

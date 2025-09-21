@@ -54,11 +54,12 @@ def ask_question():
     contexts = hybrid_search(q, top_k=5)
     contexts_preview = [{"text": c["text"][:200]} for c in contexts]
     answer, sources = generate_answer_with_sources(q, contexts)
+    print(f"Question: {q}\nAnswer: {answer}")
     
     return jsonify({
         "question": q,
         "contexts": contexts_preview,
-        "answer": answer,
+        "answer": answer.replace("\r\n", "\n").replace("\n", "\n"),
         "sources": sources
     })
 
