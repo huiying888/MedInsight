@@ -13,7 +13,7 @@ export default function Home() {
         <div className="hero-inner">
           <div className="hero-brand">
             {/* Hero variant → large logo, small text */}
-            <Brand size={85} variant="hero" />
+            <Brand size={60} variant="hero" />
             <div className="badge-row">
               <span className="badge">AI medical PDF search</span>
               <span className="badge">AWS-first</span>
