@@ -82,7 +82,7 @@ waitress-serve --host=0.0.0.0 --port=3000 flask_server:app
 ```
 ### 5. Notes
 - This application is also hosted on AWS EC2.
-- Access the frontend in your browser at http://<EC2-PUBLIC-IP>:PORT
+- Access the frontend in your browser at [http://34.207.182.237:5000/](http://34.207.182.237:5000/)
 
 ---
 
