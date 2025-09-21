@@ -16,10 +16,10 @@ const defaultAssistantMessage =
   "Hi there 👋 I’m your AI Assistant. Ask me anything about your documents and I’ll help you uncover insights.";
 
 const faqItems = [
-  { id: 1, q: "🩺 What is this patient's current medications and any known allergies?" },
-  { id: 2, q: "💊 Is there any previous treatment received?" },
-  { id: 3, q: "👩🏼‍⚕️ List the patient information" },
-  { id: 4, q: "🩸 Show me last lab report result" },
+  { id: 1, q: "🩺 What are the symptoms of fever?" },
+  { id: 2, q: "💊 Which patient has allergy to Penicillin?" },
+  { id: 3, q: "👩🏼‍⚕️ List patients information" },
+  { id: 4, q: "🩸 What is the use of aspirin?" },
 ];
 
 // Utility: format AI answers nicely
@@ -170,7 +170,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://34.207.252.129:3000/ask";
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/ask";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
