@@ -7,6 +7,8 @@ import faiss
 import numpy as np
 import spacy
 from typing import List, Dict
+import re
+
 
 # -------------------------------
 # Config
@@ -163,10 +165,43 @@ def extract_highlight(question, chunk_text):
 
 def generate_answer_with_sources(question, contexts):
     # Main answer
-    context_text = "\n\n".join([c["text"] for c in contexts])
+    # --- Extract patient name from the question ---
+    match = re.search(r"patient\s+([\w\s]+)", question.lower())
+    patient_name = match.group(1).strip() if match else None
+
+    # --- Filter contexts for that patient only ---
+    filtered_contexts = contexts
+    if patient_name:
+        filtered_contexts = [
+            c for c in contexts if patient_name in c["text"].lower()
+        ]
+        if not filtered_contexts:
+            return f"No records found for patient {patient_name.title()}.", []
+
+    context_text = "\n\n".join([c["text"] for c in filtered_contexts])
     prompt = f"""You are a medical assistant.
 Use the following patient records, knowledge base and guidelines to answer the question clearly and accurately.
 If the answer is not in the records, say so.
+
+Instructions:
+- Always answer in the following structured format.
+- If the question asks for a single patient, output exactly like this:
+
+Example:
+Question: I want the detail of John Doe
+Answer:
+Here are the details for patient John Doe:
+Hospital: Demo General Hospital
+NRIC: 123456-78-9012
+Age: 45 years old
+Gender: Male
+Blood type: A+
+Allergies: None
+[Add extra fields if available]
+
+Now, follow this format strictly.
+- If the question asks for all patients, provide a structured list (one entry per patient).
+- Never mix unrelated patients together unless explicitly requested.
 
 Context:
 {context_text}
@@ -188,17 +223,25 @@ Answer:"""
 
     # Add sources + highlights (skip N/A)
     sources = []
+    seen = {}
     for c in contexts:
         highlight = extract_highlight(question, c["text"])
         print("Extracted Highlight:", highlight)
-        norm = highlight.strip().lower()
-        if norm and "n/a" not in norm.lower():
-            sources.append({
-                "file": c.get("file"),
-                "page": c.get("page"),
-                "source": c.get("source"),
-                "highlight": highlight.strip()
-            })
+        highlight = highlight.strip().lower()
+        if highlight and "n/a" not in highlight.lower():
+            key = (c.get("file"), c.get("page"))
+            if key not in seen:
+                seen[key] = {
+                    "file": c.get("file"),
+                    "page": c.get("page"),
+                    "source": c.get("source"),
+                    "highlight": set()  # use set to deduplicate
+                }
+            seen[key]["highlight"].add(highlight)
+    # flatten into final list
+    for val in seen.values():
+        val["highlight"] = " | ".join(val["highlight"])  # merge multiple into one string
+        sources.append(val)
 
     return answer, sources
 
