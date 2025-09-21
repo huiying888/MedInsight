@@ -10,9 +10,10 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
-    "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-pdf": "^10.1.0",
+    "react-pdf-highlighter": "^8.0.0-rc.0",
     "react-router-dom": "^7.9.1",
     "web-vitals": "^2.1.4"
   },
@@ -42,5 +43,8 @@
   },
   "devDependencies": {
     "react-scripts": "^5.0.1"
+  },
+  "overrides": {
+    "pdfjs-dist": "5.4.149"
   }
 }
