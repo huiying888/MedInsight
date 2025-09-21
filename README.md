@@ -45,6 +45,13 @@ MedInsight solves this by:
 - Database: AWS S3
 - AI Models: AWS Bedrock (Nova Pro, Titan Embeddings G1 - Text)
 - Others: PyMuPDF (text extraction), Tesseract OCR (image text extraction), FAISS (vector similarity search), Hybrid search (KNN + string matching)
+- 
+---
+
+## System Architecture
+![Frontend-Backend](assets/frontend-backend-architecture.png)
+![Data-Ingestion-Pipeline](assets/data-ingestion-pipeline.png)
+![Chatbox-Query-Pipeline](assets/chatbox-query-pipeline.png)
 
 ---
 
