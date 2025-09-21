@@ -164,7 +164,7 @@ export default function Docs() {
 
       <div className="chat-history-container" style={{ position: "relative", paddingBottom: 80, minHeight: 360 }}>
         {loading && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+          <div style={{position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(46, 46, 46, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
             <div className="message-bubble loading-bubble" style={{ background: "var(--card-bg, #fff)", border: "1px solid #e26d6d" }}>
               <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
               <span style={{ marginLeft: 8, color: "#e26d6d", fontWeight: 600 }}>Loading…</span>

@@ -4,6 +4,7 @@ import "../App.css";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { useNavigate } from "react-router-dom";
 
 // Tell pdf.js where the worker is
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
@@ -217,11 +218,6 @@ export default function Chat() {
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) alert(`Simulating upload of: ${file.name}`);
-  };
-
   // ✅ Extract highlights only from latest sources
   const pdfHighlights = latestSources.flatMap((s) => {
     if (!s.highlight) return [];
@@ -247,6 +243,8 @@ export default function Chat() {
   useEffect(() => {
     console.log("🔍 Current highlights:", pdfHighlights);
   }, [pdfHighlights]);
+
+  const navigate = useNavigate();
 
   return (
     <div className="chat-layout">
@@ -315,16 +313,14 @@ export default function Chat() {
 
         <div className="chat-input-area-fixed">
           <div className="chat-input-wrapper">
-            <label htmlFor="file-upload" className="upload-btn" title="Upload PDF">
+            <button
+              type="button"
+              className="upload-btn"
+              title="Go to Upload page"
+              onClick={() => navigate("/upload")}
+            >
               +
-              <input
-                id="file-upload"
-                type="file"
-                onChange={handleFileUpload}
-                accept=".pdf,.txt"
-                style={{ display: "none" }}
-              />
-            </label>
+            </button>
             <input
               type="text"
               className="chat-input"
