@@ -1,6 +1,6 @@
 # MedInsight
 
-![Insight](assets/1.png)
+![MedInsight](assets/1.png)
 
 **MedInsight** is an AI-powered medical document query tool that lets healthcare teams ask natural-language questions and instantly find answers inside large collections of PDFs—guidelines, reports, and scanned documents.  
 The goal is to provide clinicians and administrators with actionable insights from medical documents, enabling them to access critical information without manually searching through countless files.  
