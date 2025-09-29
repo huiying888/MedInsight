@@ -1,6 +1,7 @@
 // src/pages/Upload.jsx
 // change URL to localhost for testing
 import React, { useState, useRef } from "react";
+import { API_BASE_FRONTEND, API_BASE_BACKEND } from "./Home";
 
 export default function UploadDocs() {
   const [patientFiles, setPatientFiles] = useState([]);
@@ -19,7 +20,7 @@ export default function UploadDocs() {
 
   const uploadFile = async (file, folder) => {
     try {
-      const res = await fetch("http://34.207.182.237:5000/presign", {
+      const res = await fetch(`${API_BASE_FRONTEND}/presign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: file.name, fileType: file.type, folder }),
@@ -50,7 +51,7 @@ export default function UploadDocs() {
         });
 
         try {
-          const res = await fetch("http://34.207.182.237:3000/process", {
+          const res = await fetch(`${API_BASE_BACKEND}/process`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder: job.folder, file: job.file }),

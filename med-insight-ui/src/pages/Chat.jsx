@@ -7,8 +7,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
-
+import { API_BASE_FRONTEND, API_BASE_BACKEND } from "./Home";
 
 // Tell pdf.js where the worker is
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
@@ -171,7 +170,7 @@ export default function Chat() {
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [latestSources, setLatestSources] = useState([]);
   const messagesEndRef = useRef(null);
-  const API_URL = process.env.REACT_APP_API_URL || "http://34.207.182.237:3000/ask";
+  const API_URL = `${API_BASE_BACKEND}/ask`;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
