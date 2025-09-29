@@ -5,6 +5,7 @@ from embedding import process_s3_json
 from query import hybrid_search, generate_answer_with_sources
 import boto3
 from flask_cors import CORS
+from extract_structured import parse_chunks, get_chunks_from_s3_file, upload_structured_to_s3
 
 app = Flask(__name__)
 CORS(app)
@@ -26,21 +27,32 @@ def process():
     try:
         # Assume get_json_from_s3_file fetches JSON from the original S3 file
         json_data = get_json_from_s3_file(s3_folder, s3_file)
-
         # Upload processed JSON to S3
         s3_output_key = upload_json_to_s3(json_data, s3_folder, s3_file)
         based_name = os.path.splitext(os.path.basename(s3_file))[0]
         s3_file_json = f"{based_name}.json"
-        result = process_s3_json(s3_folder, s3_file_json)
+        print("folder name", s3_folder)
+        # only process if the folder is patients
+        if s3_folder == "patients":
+            structured_data = get_chunks_from_s3_file(s3_folder, s3_file_json)
+            s3_structured_output_key = upload_structured_to_s3(structured_data, s3_folder)
+            print(f"Extracted structured data: {structured_data}")
+        try:
+            result = process_s3_json(s3_folder, s3_file_json)
+        except Exception as e:
+            print(f"Error during embedding processing: {e}")
+            result = None
 
         return jsonify({
             "message": "Processing successful",
             "s3_key": s3_output_key,
+            "s3_structured_key": s3_structured_output_key if s3_folder == "patients" else None,
             "result": result
         })
     
 
     except Exception as e:
+        print(f"Error during processing: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/ask", methods=["POST"])
