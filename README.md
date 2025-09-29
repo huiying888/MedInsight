@@ -1,6 +1,6 @@
 # MedInsight
 
-![MedInsight](assets/Medinsight.png)
+![MedInsight](assets/medinsight-photo.png)
 
 **MedInsight** is an AI-powered medical document query tool that lets healthcare teams ask natural-language questions and instantly find answers inside large collections of PDFs—guidelines, reports, and scanned documents.  
 The goal is to provide clinicians and administrators with actionable insights from medical documents, enabling them to access critical information without manually searching through countless files.  
@@ -44,11 +44,20 @@ MedInsight solves this by:
 - Backend/API: FlaskAPI, AWS EC2, PM2
 - Database: AWS S3
 - AI Models: AWS Bedrock (Nova Pro, Titan Embeddings G1 - Text)
-- Others: PyMuPDF (text extraction), Tesseract OCR (image text extraction), FAISS (vector similarity search), Hybrid search (KNN + string matching)
+- Others (Open Source): PyMuPDF (text extraction), Tesseract OCR (image text extraction), FAISS (vector similarity search), Hybrid search (KNN + string matching)
+  
+---
+
+## System Architecture
+![Frontend-Backend](assets/frontend-backend-architecture.png)
+![Data-Ingestion-Pipeline](assets/data-ingestion-pipeline.png)
+![Chatbox-Query-Pipeline](assets/chatbox-query-pipeline.png)
 
 ---
 
 ## Setup Instructions
+
+### Self-Host
 ### 1. Clone the Repository
 ```bash
 # Clone the repo
@@ -73,9 +82,10 @@ node server.js
 cd MedInsight
 waitress-serve --host=0.0.0.0 --port=3000 flask_server:app
 ```
-### 5. Notes
+
+### Access the application on AWS EC2
 - This application is also hosted on AWS EC2.
-- Access the frontend in your browser at http://<EC2-PUBLIC-IP>:PORT
+- Access the frontend in your browser at [http://34.207.182.237:5000/](http://34.207.182.237:5000/)
 
 ---
 

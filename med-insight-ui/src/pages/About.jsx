@@ -6,7 +6,9 @@ export default function About() {
     <div className="about-page">
       {/* Top intro */}
       <section className="about-hero">
-        <Brand size={56} />
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Brand size={56} />
+        </div>
         <h1>About MedInsight</h1>
         <p className="about-lead">
           MedInsight is an AI-powered medical document query tool that lets healthcare
@@ -26,7 +28,7 @@ export default function About() {
 
         <h3>Why it matters</h3>
         <p>
-          Clinicians and admins waste time hunting through unstructured PDFs. MedInsight
+          Clinicians and admins waste time hunting through unstructured documents. MedInsight
           turns those files into a searchable knowledge base so you can make faster, more
           confident decisions at the point of care.
         </p>

@@ -30,7 +30,7 @@ export default function NavBar(){
       }}
     >
       <div style={{ display:"flex", alignItems:"center", gap:16, maxWidth:1200, margin:"0 auto" }}>
-        <Brand size={28} />
+        <Brand size={28} variant="navbar" />
         <div style={{ display:"flex", flexWrap:"wrap", gap:4, flex:1 }}>
           <NavLink to="/" style={linkStyle} end>Home</NavLink>
           <NavLink to="/chat" style={linkStyle}>Chat</NavLink>

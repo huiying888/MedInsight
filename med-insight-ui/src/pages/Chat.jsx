@@ -17,10 +17,10 @@ const defaultAssistantMessage =
   "Hi there 👋 I’m your AI Assistant. Ask me anything about your documents and I’ll help you uncover insights.";
 
 const faqItems = [
-  { id: 1, q: "🩺 What is this patient's current medications and any known allergies?" },
-  { id: 2, q: "💊 Is there any previous treatment received?" },
-  { id: 3, q: "👩🏼‍⚕️ List the patient information" },
-  { id: 4, q: "🩸 Show me last lab report result" },
+  { id: 1, q: "🩺 What are the symptoms of fever?" },
+  { id: 2, q: "💊 Which patient has allergy to Penicillin?" },
+  { id: 3, q: "👩🏼‍⚕️ List patients information" },
+  { id: 4, q: "🩸 What is the use of aspirin?" },
 ];
 
 // Utility: format AI answers nicely
@@ -258,7 +258,7 @@ export default function Chat() {
       {/* Left: Chat Section */}
       <div className={`chat-panel ${selectedPdf ? "shrunk" : ""}`}>
         <div className="top-section">
-          <h1 className="chat-header">💬 MedInsightAI</h1>
+          <h1 className="chat-header">💬 MedInsight</h1>
           <p className="chat-subtitle">
             I'm here to help you uncover business insights from your medical documents.
           </p>

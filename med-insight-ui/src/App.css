@@ -1499,3 +1499,25 @@ html[data-theme="dark"] .cta-tertiary:hover {
   .docs-explorer { grid-template-columns: 1fr; }
   .docs-sidebar { position: relative; height: auto; }
 }
+
+/* Reduce top spacing in hero section on homepage */
+.hero.hero--fancy {
+  padding-top: 40px;   /* was probably ~72px or more */
+}
+
+.hero-inner {
+  margin-top: 0;       /* make sure no extra margin is pushing logo down */
+}
+
+.hero-brand {
+  margin-top: 0;       /* remove extra margin above logo */
+}
+
+.about-hero {
+  text-align: center;
+}
+
+.about-hero .brand-name {
+  display: block;
+  margin: 0 auto;
+}
