@@ -7,29 +7,27 @@ import json
 import re
 import uuid
 import os
+import convert_to_pdf as PdfConverter
+import shutil
+from pathlib import Path
 
 # -------------------------------
 # Configs
 # -------------------------------
 
-BUCKET = os.getenv("AWS_BUCKET", "meddoc-raw")
-REGION = os.getenv("AWS_REGION", "us-east-1")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-S3_BUCKET = BUCKET
+RAW_BUCKET = "meddoc-raw"
 PROCESSED_BUCKET = "meddoc-processed"
 
 # -------------------------------
-# Initialize boto3 client (auto loads creds from env/credentials file)
+# Initialize boto3 client
 # -------------------------------
-s3 = boto3.client(
-    "s3",
-    region_name=REGION,
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-)
 
-comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
+Path("tmp").mkdir(exist_ok=True)
+s3 = boto3.client("s3")
+converter = PdfConverter.FileConverter(None, "tmp/pdf")
+
+# comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
+
 def download_from_s3(bucket, key):
     """Download file from S3 to a unique local path."""
     print("downloading from s3")
@@ -167,37 +165,107 @@ def extract_text_from_image(path):
 # -------------------------------
 # PDF extraction (if input is PDF)
 # -------------------------------
+
 def extract_text_from_pdf(path):
     doc = fitz.open(path)
     lines = []
+
     for page_num, page in enumerate(doc, start=1):
+        # --- Extract native text blocks ---
         for b in page.get_text("blocks"):
             text, bbox = b[4], b[:4]
             if text.strip():
-                print(text.strip())
                 lines.append({
                     "text": text.strip(),
                     "page": page_num,
-                    "bbox": bbox
+                    "bbox": bbox  # already in page coords
                 })
+
+        # --- Extract images + run OCR ---
+        for img_info in page.get_image_info(xrefs=True):
+            xref = img_info["xref"]
+            image_bbox = img_info["bbox"]  # already in page coords
+
+            try:
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                pil_img = Image.open(io.BytesIO(image_bytes))
+            except Exception as e:
+                print(f"⚠ Could not extract image xref={xref} on page {page_num}: {e}")
+                continue
+
+            img_w, img_h = pil_img.size
+
+            # Run OCR
+            ocr_data = pytesseract.image_to_data(
+                pil_img, output_type=pytesseract.Output.DICT
+            )
+
+            for i in range(len(ocr_data["text"])):
+                if int(ocr_data["conf"][i]) > 0 and ocr_data["text"][i].strip():
+                    x, y, w, h = (ocr_data["left"][i],
+                                  ocr_data["top"][i],
+                                  ocr_data["width"][i],
+                                  ocr_data["height"][i])
+
+                    # Scale OCR bbox → page coords
+                    x0_page = image_bbox[0] + (x / img_w) * (image_bbox[2] - image_bbox[0])
+                    y0_page = image_bbox[1] + (y / img_h) * (image_bbox[3] - image_bbox[1])
+                    x1_page = image_bbox[0] + ((x + w) / img_w) * (image_bbox[2] - image_bbox[0])
+                    y1_page = image_bbox[1] + ((y + h) / img_h) * (image_bbox[3] - image_bbox[1])
+
+                    lines.append({
+                        "text": ocr_data["text"][i],
+                        "page": page_num,
+                        "bbox": (x0_page, y0_page, x1_page, y1_page)
+                    })
+
     return lines
 
-import re
-import os
+
+def extract_image_from_pdf(path, output_dir):
+    doc = fitz.open(path)
+
+    # Ensure output folder exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        images = page.get_images(full=True)
+
+        for img_index, img in enumerate(images, start=1):
+            xref = img[0]  # image reference ID
+            base_image = doc.extract_image(xref)
+            image_bytes = base_image["image"]
+            image_ext = base_image["ext"]
+
+            bbox = page.get_image_bbox(xref)
+
+            img_filename = f"page{page_num+1}_img{img_index}.{image_ext}"
+            img_path = os.path.join(output_dir, img_filename)
+
+            with open(img_path, "wb") as f:
+                f.write(image_bytes)
+
 
 def get_json_from_s3_file(s3_folder, s3_file):
     S3_KEY = f"{s3_folder}/{s3_file}"
-    print(f"Processing s3://{S3_BUCKET}/{S3_KEY}")
-    local_file = download_from_s3(S3_BUCKET, S3_KEY)
+    print(f"Processing s3://{RAW_BUCKET}/{S3_KEY}")
+    local_file = download_from_s3(RAW_BUCKET, S3_KEY)
     print(f"Downloaded {S3_KEY} to {local_file}")
     try:
-        if local_file.lower().endswith(".pdf"):
-            lines = extract_text_from_pdf(local_file)
+        # if not pdf, convert to pdf
+        if not local_file.lower().endswith(".pdf"):
+            converter.convert_file(local_file)
+            temp_file = "tmp/pdf/" + os.path.splitext(local_file)[0] + ".pdf"
         else:
-            lines = extract_text_from_image(local_file)
+            temp_file = "tmp/pdf/" + local_file
 
-        chunks = group_lines_to_chunks(lines, source=f"s3://{S3_BUCKET}/{S3_KEY}")
-        print(f"Extracted {len(chunks)} chunks from {local_file}")
+        # Lines Extraction from Texts and Images in PDF
+        lines = extract_text_from_pdf(temp_file)
+
+        chunks = group_lines_to_chunks(lines, source=f"s3://{RAW_BUCKET}/{S3_KEY}")
+        print(f"Extracted {len(chunks)} chunks from {temp_file}")
 
         # -------------------------------
         # Prepare JSON object (list of dicts)
@@ -226,26 +294,32 @@ def get_json_from_s3_file(s3_folder, s3_file):
         if os.path.exists(local_file):
             os.remove(local_file)
             print(f"Deleted temporary file {local_file}")
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            print(f"Deleted temporary file {temp_file}")
+        if os.path.exists("tmp"):
+            shutil.rmtree("tmp")
+            print('Deleted temporary folder "tmp"')
 
-def process_patient_with_comprehend(chunks):
-    """Run Comprehend Medical on extracted chunks of patient data."""
-    results = []
-    for ch in chunks:
-        try:
-            resp = comprehend_medical.detect_entities_v2(Text=ch["text"])
-            entities = resp.get("Entities", [])
-            results.append({
-                "chunk_id": ch["chunk_id"],
-                "page": ch["page"],
-                "text": ch["text"],
-                "entities": entities,
-                "source": ch["source"],
-                "type": ch["type"]
-            })
-        except Exception as e:
-            print(f"ComprehendMedical failed: {e}")
-            results.append(ch)  # fallback
-    return results
+# def process_patient_with_comprehend(chunks):
+#     """Run Comprehend Medical on extracted chunks of patient data."""
+#     results = []
+#     for ch in chunks:
+#         try:
+#             resp = comprehend_medical.detect_entities_v2(Text=ch["text"])
+#             entities = resp.get("Entities", [])
+#             results.append({
+#                 "chunk_id": ch["chunk_id"],
+#                 "page": ch["page"],
+#                 "text": ch["text"],
+#                 "entities": entities,
+#                 "source": ch["source"],
+#                 "type": ch["type"]
+#             })
+#         except Exception as e:
+#             print(f"ComprehendMedical failed: {e}")
+#             results.append(ch)  # fallback
+#     return results
 
 # -------------------------------
 # Upload JSON to S3
@@ -280,8 +354,8 @@ def upload_json_to_s3(json_data, folder, file_name):
 # Example Usage
 # -------------------------------
 if __name__ == "__main__":
-    folder = "guidelines"
-    file = "MOH_GUIDELINE_FINAL_BOOK_EBOOK_SINGLE_compressed.pdf"
+    folder = "knowledge"
+    file = "medicine.png"
     json_data = get_json_from_s3_file(folder, file)
     
     # output_file = f"{os.path.splitext(os.path.basename(file))[0]}.json"  # You can change the filename
@@ -296,7 +370,7 @@ if __name__ == "__main__":
 
     # # Upload JSON to S3
     # s3.put_object(
-    #     Bucket=S3_BUCKET,
+    #     Bucket=RAW_BUCKET,
     #     Key=s3_output_key,
     #     Body=json_str.encode("utf-8"),
     #     ContentType="application/json"
