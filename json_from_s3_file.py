@@ -209,6 +209,7 @@ def get_json_from_s3_file(s3_folder, s3_file):
                 "page": ch["page"],
                 "text": ch["text"],
                 "source": ch["source"],
+                "bbox": ch["bbox"],
                 "type": f"{s3_folder}"
             })
         print(f"Prepared {len(json_chunks)} JSON chunks")
