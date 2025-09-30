@@ -6,6 +6,9 @@ import botocore
 from botocore.exceptions import ClientError
 import faiss
 import numpy as np
+from threading import Lock
+
+faiss_lock = Lock()
 
 # -------------------------------
 # Config
@@ -77,61 +80,62 @@ def get_embedding(text):
 # Build or update FAISS index
 # -------------------------------
 def build_or_update_faiss(embeddings, metadata_list):
-    index = None
-    existing_metadata = []
+    with faiss_lock:
+        index = None
+        existing_metadata = []
 
-    try:
-        s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
-        s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
+        try:
+            s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
+            s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
 
-        index = faiss.read_index(INDEX_FILE)
-        with open(META_FILE, "r") as f:
-            existing_metadata = json.load(f)
-        print(f"📥 Existing FAISS index loaded with {index.ntotal} vectors")
+            index = faiss.read_index(INDEX_FILE)
+            with open(META_FILE, "r") as f:
+                existing_metadata = json.load(f)
+            print(f"📥 Existing FAISS index loaded with {index.ntotal} vectors")
 
-    except ClientError as e:
-        if e.response["Error"]["Code"] in ["NoSuchKey", "404"]:
-            print("⚠️ No existing FAISS index found in S3. A new one will be created.")
-            index = None
-            existing_metadata = []
-        else:
-            raise
+        except ClientError as e:
+            if e.response["Error"]["Code"] in ["NoSuchKey", "404"]:
+                print("⚠️ No existing FAISS index found in S3. A new one will be created.")
+                index = None
+                existing_metadata = []
+            else:
+                raise
 
-    # Deduplicate based on (file, chunk_id)
-    existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
-    new_embeddings, new_metadata = [], []
+        # Deduplicate based on (file, chunk_id)
+        existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
+        new_embeddings, new_metadata = [], []
 
-    for emb, meta in zip(embeddings, metadata_list):
-        key = (meta["file"], meta["chunk_id"])
-        if key not in existing_keys:
-            new_embeddings.append(emb)
-            new_metadata.append(meta)
+        for emb, meta in zip(embeddings, metadata_list):
+            key = (meta["file"], meta["chunk_id"])
+            if key not in existing_keys:
+                new_embeddings.append(emb)
+                new_metadata.append(meta)
 
-    if not new_embeddings:
-        print("✅ No new data to add.")
-        return
+        if not new_embeddings:
+            print("✅ No new data to add.")
+            return
 
-    new_embeddings = np.vstack(new_embeddings)
+        new_embeddings = np.vstack(new_embeddings)
 
-    # If first time, init FAISS
-    if index is None:
-        dim = new_embeddings.shape[1]
-        index = faiss.IndexFlatL2(dim)
-        print(f"🆕 Created new FAISS index with dim={dim}")
+        # If first time, init FAISS
+        if index is None:
+            dim = new_embeddings.shape[1]
+            index = faiss.IndexFlatL2(dim)
+            print(f"🆕 Created new FAISS index with dim={dim}")
 
-    # Append new data
-    index.add(new_embeddings)
-    all_metadata = existing_metadata + new_metadata
+        # Append new data
+        index.add(new_embeddings)
+        all_metadata = existing_metadata + new_metadata
 
-    # Save updated index + metadata locally
-    faiss.write_index(index, INDEX_FILE)
-    with open(META_FILE, "w") as f:
-        json.dump(all_metadata, f)
+        # Save updated index + metadata locally
+        faiss.write_index(index, INDEX_FILE)
+        with open(META_FILE, "w") as f:
+            json.dump(all_metadata, f)
 
-    # Upload back to S3
-    s3.upload_file(INDEX_FILE, S3_VECTOR_BUCKET, INDEX_FILE)
-    s3.upload_file(META_FILE, S3_VECTOR_BUCKET, META_FILE)
-    print(f"🎉 FAISS index updated with {len(new_metadata)} new chunks. Total vectors: {index.ntotal}")
+        # Upload back to S3
+        s3.upload_file(INDEX_FILE, S3_VECTOR_BUCKET, INDEX_FILE)
+        s3.upload_file(META_FILE, S3_VECTOR_BUCKET, META_FILE)
+        print(f"🎉 FAISS index updated with {len(new_metadata)} new chunks. Total vectors: {index.ntotal}")
 
 
 # -------------------------------

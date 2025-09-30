@@ -13,6 +13,7 @@ import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
 
 export default function AppRouter() {
   return (
@@ -29,6 +30,7 @@ export default function AppRouter() {
             <Route index element={<Home />} />
             <Route path="chat" element={<Chat />} />
             <Route path="upload" element={<Upload />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="docs" element={<Docs />} />
             <Route path="settings" element={<Settings />} />
             <Route path="about" element={<About />} />

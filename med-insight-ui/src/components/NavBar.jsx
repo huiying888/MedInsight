@@ -35,6 +35,7 @@ export default function NavBar(){
           <NavLink to="/" style={linkStyle} end>Home</NavLink>
           <NavLink to="/chat" style={linkStyle}>Chat</NavLink>
           <NavLink to="/upload" style={linkStyle}>Upload</NavLink>
+          <NavLink to="/dashboard" style={linkStyle}>Dashboard</NavLink>
           <NavLink to="/docs" style={linkStyle}>Docs</NavLink>
           <NavLink to="/settings" style={linkStyle}>Settings</NavLink>
           <NavLink to="/about" style={linkStyle}>About</NavLink>

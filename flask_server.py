@@ -37,11 +37,7 @@ def process():
             structured_data = get_chunks_from_s3_file(s3_folder, s3_file_json)
             s3_structured_output_key = upload_structured_to_s3(structured_data, s3_folder)
             print(f"Extracted structured data: {structured_data}")
-        try:
-            result = process_s3_json(s3_folder, s3_file_json)
-        except Exception as e:
-            print(f"Error during embedding processing: {e}")
-            result = None
+        result = process_s3_json(s3_folder, s3_file_json)
 
         return jsonify({
             "message": "Processing successful",

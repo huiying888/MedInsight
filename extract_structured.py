@@ -5,6 +5,8 @@ import os
 import json
 import boto3
 from json_from_s3_file import s3
+from threading import Lock
+s3_lock = Lock()
 
 BUCKET = os.getenv("AWS_BUCKET", "meddoc-raw")
 REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -74,9 +76,14 @@ def get_chunks_from_s3_file(s3_folder, s3_file):
 
         print(f"Loaded {len(chunks)} chunks from {local_file}")
 
-        # Directly parse chunks
         structured_data = parse_chunks(chunks)
-        structured_data["source_file"] = s3_file  # optional
+
+        # Ensure it's always a list
+        if isinstance(structured_data, dict):
+            structured_data = [structured_data]
+
+        for patient in structured_data:
+            patient["source_file"] = s3_file
 
         return structured_data
 
@@ -98,39 +105,39 @@ def upload_structured_to_s3(json_data, folder):
     'patients_structured.json'. Appends to existing data if present.
     Skips new patients if NRIC already exists.
     """
-    s3_key = f"{folder}/patients_structured.json"
-    combined_data = []
+    with s3_lock:
+        s3_key = f"{folder}/patients_structured.json"
+        combined_data = []
 
-    # Check if file exists
-    try:
-        existing_obj = s3.get_object(Bucket=PROCESSED_BUCKET, Key=s3_key)
-        existing_data = json.loads(existing_obj['Body'].read())
-        if isinstance(existing_data, list):
-            combined_data.extend(existing_data)
-    except s3.exceptions.NoSuchKey:
-        # File does not exist, create new
-        pass
+        # Check if file exists
+        try:
+            existing_obj = s3.get_object(Bucket=PROCESSED_BUCKET, Key=s3_key)
+            existing_data = json.loads(existing_obj['Body'].read())
+            if isinstance(existing_data, list):
+                combined_data.extend(existing_data)
+        except s3.exceptions.NoSuchKey:
+            # File does not exist, create new
+            pass
 
-    # Collect existing NRICs for deduplication
-    existing_nrics = {p.get("nric") for p in combined_data}
+        # Collect existing NRICs for deduplication
+        existing_nrics = {p.get("nric") for p in combined_data}
 
-    # Append new data only if NRIC not already in combined_data
-    if isinstance(json_data, list):
+        # Append new data only if NRIC not already in combined_data
+        # Always normalize input to a list
+        if not isinstance(json_data, list):
+            json_data = [json_data]
+
         for patient in json_data:
             if patient.get("nric") not in existing_nrics:
                 combined_data.append(patient)
                 existing_nrics.add(patient.get("nric"))
-    else:
-        if json_data.get("nric") not in existing_nrics:
-            combined_data.append(json_data)
 
-    # Upload combined JSON back to S3
-    s3.put_object(
-        Bucket=PROCESSED_BUCKET,
-        Key=s3_key,
-        Body=json.dumps(combined_data, ensure_ascii=False, indent=4).encode("utf-8"),
-        ContentType="application/json"
-    )
+        # Upload combined JSON back to S3
+        s3.put_object(
+            Bucket=PROCESSED_BUCKET,
+            Key=s3_key,
+            Body=json.dumps(combined_data, ensure_ascii=False, indent=4).encode("utf-8"),
+            ContentType="application/json"
+        )
 
-    return s3_key
-
+        return s3_key
