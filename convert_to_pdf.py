@@ -11,6 +11,7 @@ from docx import Document
 from pptx import Presentation
 import io
 import shutil
+import subprocess
 
 class FileConverter:
     def __init__(self, input_folder=None, output_folder=None):
@@ -19,7 +20,7 @@ class FileConverter:
         self.output_folder = Path(output_folder) if output_folder else "pdf_output"
         self.output_folder.mkdir(exist_ok=True)
         
-    def convert_image_to_pdf(self, input_path, output_path):
+    def convert_image_to_pdf(self, input_path: Path, output_path: Path):
         """Convert image files (PNG, JPG, JPEG) to PDF"""
         try:
             image = Image.open(input_path)
@@ -39,94 +40,53 @@ class FileConverter:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
     
-    def convert_docx_to_pdf(self, input_path, output_path):
-        """Convert DOCX to PDF with text, tables, and images"""
+    def convert_docx_to_pdf(self, input_path: Path, output_path: Path):
+        """Convert DOCX to PDF using LibreOffice (soffice)"""
         try:
-            doc = Document(input_path)
-            pdf = SimpleDocTemplate(str(output_path), pagesize=A4)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            # Process paragraphs
-            for para in doc.paragraphs:
-                if para.text.strip():
-                    style = styles['Heading1'] if para.style.name.startswith('Heading') else styles['BodyText']
-                    elements.append(Paragraph(para.text, style))
-                    elements.append(Spacer(1, 6))
-            
-            # Process tables
-            for table in doc.tables:
-                table_data = [[cell.text for cell in row.cells] for row in table.rows]
-                if table_data:
-                    t = Table(table_data)
-                    t.setStyle(TableStyle([
-                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ]))
-                    elements.append(t)
-                    elements.append(Spacer(1, 12))
-            
-            # Extract images from document relationships
-            for rel in doc.part.rels.values():
-                if "image" in rel.target_ref:
-                    try:
-                        image = rel.target_part
-                        image_bytes = image.blob
-                        img = Image.open(io.BytesIO(image_bytes))
-                        
-                        # Save to buffer
-                        img_buffer = io.BytesIO()
-                        img.save(img_buffer, format="PNG")
-                        img_buffer.seek(0)
-                        
-                        # Original size (pixels)
-                        img_width_px, img_height_px = img.size
-                        
-                        # Convert to points
-                        dpi = img.info.get("dpi", (96, 96))[0]  # fallback to 96 dpi
-                        img_width_pt = img_width_px * 72 / dpi
-                        img_height_pt = img_height_px * 72 / dpi
-                        
-                        # Fit within page content area
-                        max_width = A4[0] - 3*inch   # leave 1.5 inch margin left/right
-                        max_height = A4[1] - 3*inch  # leave 1.5 inch margin top/bottom
-                        scale = min(1, max_width / img_width_pt, max_height / img_height_pt)
-                        
-                        rl_img = RLImage(
-                            img_buffer,
-                            width=img_width_pt * scale,
-                            height=img_height_pt * scale
-                        )
-                        
-                        elements.append(rl_img)
-                        elements.append(Spacer(1, 12))
-                    except Exception as img_error:
-                        print(f"  Warning: Could not extract image - {img_error}")
-            
-            pdf.build(elements)
-            print(f"✓ Converted: {input_path.name} -> {output_path.name}")
-            return True
+            # Ensure output directory exists
+            os.makedirs(output_path.parent, exist_ok=True)
+
+            # Run LibreOffice in headless mode
+            result = subprocess.run(
+                [
+                    "soffice", "--headless",
+                    "--convert-to", "pdf",
+                    "--outdir", str(output_path.parent),
+                    str(input_path)
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            if result.returncode != 0:
+                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                return False
+
+            # LibreOffice saves the PDF with the same base name as input
+            generated_pdf = output_path.parent / (input_path.stem + ".pdf")
+            if generated_pdf.exists():
+                if generated_pdf != output_path:
+                    generated_pdf.rename(output_path)
+                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                return True
+            else:
+                print(f"✗ PDF not generated for {input_path.name}")
+                return False
+
         except Exception as e:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
     
-    def convert_xlsx_to_pdf(self, input_path, output_path):
-        """Convert Excel to PDF"""
+    def convert_xlsx_to_pdf(self, input_path: Path, output_path: Path):
+        """Convert Excel (XLS/XLSX) to PDF using LibreOffice"""
         try:
-            df = pd.read_excel(input_path, sheet_name=None)
-            doc = SimpleDocTemplate(str(output_path), pagesize=A4)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            for sheet_name, data in df.items():
                 elements.append(Paragraph(f"Sheet: {sheet_name}", styles['Heading1']))
                 elements.append(Spacer(1, 12))
                 
                 table_data = [data.columns.tolist()] + data.values.tolist()
                 table = Table(table_data)
                 table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -144,88 +104,43 @@ class FileConverter:
         except Exception as e:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
-    
-    def convert_ppt_to_pdf(self, input_path, output_path):
-        """Convert PPT/PPTX to PDF with text, tables, and images"""
+
+    def convert_ppt_to_pdf(self, input_path: Path, output_path: Path):
+        """Convert PowerPoint (PPT/PPTX) to PDF using LibreOffice"""
         try:
-            prs = Presentation(input_path)
-            pdf = SimpleDocTemplate(str(output_path), pagesize=A4)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            for slide_num, slide in enumerate(prs.slides, 1):
-                # Add slide number
-                elements.append(Paragraph(f"Slide {slide_num}", styles['Heading1']))
-                elements.append(Spacer(1, 6))
-                
-                # Extract text and images from shapes
-                for shape in slide.shapes:
-                    # Extract text
-                    if hasattr(shape, "text") and shape.text.strip():
-                        style = styles['Heading2'] if hasattr(shape, "is_placeholder") and shape.is_placeholder else styles['BodyText']
-                        elements.append(Paragraph(shape.text, style))
-                        elements.append(Spacer(1, 6))
-                    
-                    # Extract images
-                    if shape.shape_type == 13:  # picture
-                        try:
-                            image = shape.image
-                            image_bytes = image.blob
-                            img = Image.open(io.BytesIO(image_bytes))
-                            
-                            # Save to buffer
-                            img_buffer = io.BytesIO()
-                            img.save(img_buffer, format="PNG")
-                            img_buffer.seek(0)
-                            
-                            # Original size (pixels)
-                            img_width_px, img_height_px = img.size
-                            
-                            # Convert to points
-                            dpi = img.info.get("dpi", (96, 96))[0]  # fallback to 96 dpi
-                            img_width_pt = img_width_px * 72 / dpi
-                            img_height_pt = img_height_px * 72 / dpi
-                            
-                            # Fit within page content area
-                            max_width = A4[0] - 3*inch   # leave 1.5 inch margin left/right
-                            max_height = A4[1] - 3*inch  # leave 1.5 inch margin top/bottom
-                            scale = min(1, max_width / img_width_pt, max_height / img_height_pt)
-                            
-                            rl_img = RLImage(
-                                img_buffer,
-                                width=img_width_pt * scale,
-                                height=img_height_pt * scale
-                            )
-                            
-                            elements.append(rl_img)
-                            elements.append(Spacer(1, 12))
-                        except Exception as img_error:
-                            print(f"  Warning: Could not extract image from slide {slide_num} - {img_error}")
-                    
-                    # Extract tables
-                    if shape.has_table:
-                        table_data = [[cell.text for cell in row.cells] for row in shape.table.rows]
-                        if table_data:
-                            t = Table(table_data)
-                            t.setStyle(TableStyle([
-                                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                            ]))
-                            elements.append(t)
-                            elements.append(Spacer(1, 12))
-                
-                # Page break between slides
-                if slide_num < len(prs.slides):
-                    elements.append(PageBreak())
-            
-            pdf.build(elements)
-            print(f"✓ Converted: {input_path.name} -> {output_path.name}")
-            return True
+            os.makedirs(output_path.parent, exist_ok=True)
+
+            result = subprocess.run(
+                [
+                    "soffice", "--headless",
+                    "--convert-to", "pdf",
+                    "--outdir", str(output_path.parent),
+                    str(input_path)
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            if result.returncode != 0:
+                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                return False
+
+            generated_pdf = output_path.parent / (input_path.stem + ".pdf")
+            if generated_pdf.exists():
+                if generated_pdf != output_path:
+                    generated_pdf.rename(output_path)
+                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                return True
+            else:
+                print(f"✗ PDF not generated for {input_path.name}")
+                return False
+
         except Exception as e:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
     
-    def convert_csv_to_pdf(self, input_path, output_path):
+    def convert_csv_to_pdf(self, input_path: Path, output_path: Path):
         """Convert CSV to PDF"""
         try:
             df = pd.read_csv(input_path)
@@ -253,7 +168,7 @@ class FileConverter:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
         
-    def convert_txt_to_pdf(self, input_path, output_path):
+    def convert_txt_to_pdf(self, input_path: Path, output_path: Path):
         """Convert TXT file to PDF"""
         try:
             # Read text file
