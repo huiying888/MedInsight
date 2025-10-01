@@ -273,9 +273,6 @@ def get_json_from_s3_file(s3_folder, s3_file):
         if os.path.exists(target_file):
             os.remove(target_file)
             print(f"Deleted temporary file {target_file}")
-        if os.path.exists("tmp"):
-            shutil.rmtree("tmp")
-            print('Deleted temporary folder "tmp"')
 
 
 # def process_patient_with_comprehend(chunks):
