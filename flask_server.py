@@ -45,23 +45,50 @@ def process():
 
 @app.route("/ask", methods=["POST"])
 def ask_question():
-    data = request.get_json()
-    if not data or "question" not in data:
-        return jsonify({"error": "Missing 'question' in request body"}), 400
+    print("=== ask_question called - updated version ===")
+    try:
+        data = request.get_json()
+        if not data or "question" not in data:
+            return jsonify({"error": "Missing 'question' in request body"}), 400
 
-    q = data["question"]
+        q = data["question"]
+        session_id = data.get("session_id", "default")
 
-    contexts = hybrid_search(q, top_k=5)
-    contexts_preview = [{"text": c["text"][:200]} for c in contexts]
-    answer, sources = generate_answer_with_sources(q, contexts)
-    print(f"Question: {q}\nAnswer: {answer}")
-    
-    return jsonify({
-        "question": q,
-        "contexts": contexts_preview,
-        "answer": answer.replace("\r\n", "\n").replace("\n", "\n"),
-        "sources": sources
-    })
+        # Get search results
+        search_result = hybrid_search(q, session_id=session_id, top_k=5)
+        print(f"Search result type: {type(search_result)}")
+        print(f"Search result: {search_result}")
+        
+        # Unpack the tuple
+        contexts, processed_query = search_result
+        print(f"Contexts type: {type(contexts)}, length: {len(contexts) if isinstance(contexts, list) else 'N/A'}")
+        
+        # Validate contexts is a list of dictionaries
+        if not isinstance(contexts, list):
+            return jsonify({"error": f"Expected contexts to be a list, got {type(contexts)}"}), 500
+            
+        # Create contexts preview safely
+        contexts_preview = []
+        for i, c in enumerate(contexts):
+            if isinstance(c, dict) and "text" in c:
+                contexts_preview.append({"text": c["text"][:200]})
+            else:
+                print(f"Warning: Context {i} is not a valid dict with 'text' key: {type(c)}")
+        
+        answer, sources = generate_answer_with_sources(q, contexts, session_id, processed_query)
+        print(f"Question: {q}\nAnswer: {answer}")
+        
+        return jsonify({
+            "question": q,
+            "contexts": contexts_preview,
+            "answer": answer.replace("\r\n", "\n").replace("\n", "\n"),
+            "sources": sources
+        })
+    except Exception as e:
+        print(f"Error in ask_question: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
