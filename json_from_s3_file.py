@@ -335,7 +335,7 @@ def upload_json_to_s3(json_data, folder, file_name):
 
 if __name__ == "__main__":
     folder = "knowledge"
-    file = "medicine.png"
+    file = "LAB SESSION 09 - IDS and Honeynet.docx"
     json_data = get_json_from_s3_file(folder, file)
     s3_path = upload_json_to_s3(json_data, folder, file)
 
