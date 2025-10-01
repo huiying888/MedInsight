@@ -81,26 +81,34 @@ class FileConverter:
     def convert_xlsx_to_pdf(self, input_path: Path, output_path: Path):
         """Convert Excel (XLS/XLSX) to PDF using LibreOffice"""
         try:
-                elements.append(Paragraph(f"Sheet: {sheet_name}", styles['Heading1']))
-                elements.append(Spacer(1, 12))
-                
-                table_data = [data.columns.tolist()] + data.values.tolist()
-                table = Table(table_data)
-                table.setStyle(TableStyle([
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                ]))
-                elements.append(table)
-                elements.append(Spacer(1, 24))
-            
-            doc.build(elements)
-            print(f"✓ Converted: {input_path.name} -> {output_path.name}")
-            return True
+            os.makedirs(output_path.parent, exist_ok=True)
+
+            result = subprocess.run(
+                [
+                    "soffice", "--headless",
+                    "--convert-to", "pdf",
+                    "--outdir", str(output_path.parent),
+                    str(input_path)
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            if result.returncode != 0:
+                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                return False
+
+            generated_pdf = output_path.parent / (input_path.stem + ".pdf")
+            if generated_pdf.exists():
+                if generated_pdf != output_path:
+                    generated_pdf.rename(output_path)
+                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                return True
+            else:
+                print(f"✗ PDF not generated for {input_path.name}")
+                return False
+
         except Exception as e:
             print(f"✗ Error converting {input_path.name}: {str(e)}")
             return False
