@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import "../App.css";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -197,68 +197,41 @@ export default function Chat() {
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
-  // ✅ Extract highlights from all sources in chat history for the selected PDF
-  const pdfHighlights = useMemo(() => {
-    if (!selectedPdf) return [];
-    
-    console.log('Selected PDF:', selectedPdf);
-    
-    // Find all sources from all messages that match the selected PDF
-    const allSources = chatHistory
-      .filter(m => m.role === 'assistant' && m.sources)
-      .flatMap(m => m.sources);
-    
-    console.log('All sources:', allSources);
-    
-    // More flexible matching - check file name and page
-    const matchingSources = allSources.filter(s => {
-      const urlMatch = s.url === selectedPdf.url || 
-                      (s.file && selectedPdf.url && selectedPdf.url.includes(s.file)) ||
-                      (s.key && selectedPdf.url && selectedPdf.url.includes(s.key));
-      const pageMatch = s.page === selectedPdf.page;
-      return urlMatch && pageMatch;
-    });
-    
-    console.log('Matching sources:', matchingSources);
-    
-    const highlights = matchingSources.flatMap((s) => {
-      if (!s.highlight) return [];
+  // ✅ Extract highlights - both phrases and individual words
+  const pdfHighlights = latestSources.flatMap((s) => {
+    if (!s.highlight) return [];
 
-      const highlightStr = Array.isArray(s.highlight)
-        ? s.highlight.join(" ")
-        : String(s.highlight);
+    const highlightStr = Array.isArray(s.highlight)
+      ? s.highlight.join(" ")
+      : String(s.highlight);
 
-      const highlights = [];
+    const highlights = [];
+    
+    // Add the complete string
+    highlights.push(highlightStr.trim());
+    
+    // Add meaningful phrases (2-4 words)
+    const words = highlightStr.split(/\s+/);
+    for (let i = 0; i < words.length - 1; i++) {
+      // 2-word phrases
+      const phrase2 = words.slice(i, i + 2).join(' ').trim();
+      if (phrase2.length > 5) highlights.push(phrase2);
       
-      // Add the complete string
-      highlights.push(highlightStr.trim());
-      
-      // Add meaningful phrases (2-4 words)
-      const words = highlightStr.split(/\s+/);
-      for (let i = 0; i < words.length - 1; i++) {
-        // 2-word phrases
-        const phrase2 = words.slice(i, i + 2).join(' ').trim();
-        if (phrase2.length > 5) highlights.push(phrase2);
-        
-        // 3-word phrases
-        if (i < words.length - 2) {
-          const phrase3 = words.slice(i, i + 3).join(' ').trim();
-          if (phrase3.length > 8) highlights.push(phrase3);
-        }
+      // 3-word phrases
+      if (i < words.length - 2) {
+        const phrase3 = words.slice(i, i + 3).join(' ').trim();
+        if (phrase3.length > 8) highlights.push(phrase3);
       }
-      
-      // Add individual meaningful words
-      words.forEach(word => {
-        const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
-        if (cleanWord.length > 3) highlights.push(cleanWord);
-      });
-      
-      return [...new Set(highlights)].filter(h => h && h.length > 3);
+    }
+    
+    // Add individual meaningful words
+    words.forEach(word => {
+      const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
+      if (cleanWord.length > 3) highlights.push(cleanWord);
     });
     
-    console.log('Final highlights:', highlights);
-    return highlights;
-  }, [selectedPdf, chatHistory]);
+    return [...new Set(highlights)].filter(h => h && h.length > 3);
+  });
 
 
   useEffect(() => {

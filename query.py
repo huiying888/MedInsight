@@ -352,10 +352,8 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
 
     # --- Build final prompt including chat history and patient context ---
     prompt = f"""You are a medical assistant.
-Use the following patient records, knowledge base, guidelines and the conversation history
+Use the following patient records, knowledge base, and the conversation history
 to answer the question clearly and accurately. 
-1. FIRST: Check if the answer to the question can be found in the provided knowledge base and patient records.
-2. IF NOT FOUND: Start your response with "This information is not available in our knowledge base." then provide general medical information
 If the answer is not in the records, say so.{patient_context}
 
 Conversation History:
