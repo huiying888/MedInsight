@@ -1579,3 +1579,104 @@ html[data-theme="dark"] .cta-tertiary:hover {
   align-items: center;
   width: 100%;
 }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  gap: 10px;
+}
+
+.tab {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.tab:hover {
+  border-color: #e26d6d;
+}
+
+.tab.active {
+  background: #e26d6d;
+  color: #fff;
+  border-color: #e26d6d;
+}
+
+/* Patients Table */
+.patients-overview {
+  margin-top: 24px;
+  overflow-x: auto;
+}
+/* Scrollable Patients Table */
+.patients-table-wrapper {
+  max-height: 400px;        /* adjust as needed */
+  overflow-y: auto;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+/* Keep headers sticky */
+.patients-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--table-head);
+  z-index: 2;
+}
+
+/* Optional: make columns fixed width for alignment */
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;   /* ✅ let columns size based on content */
+}
+
+.patients-table th,
+.patients-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+
+  /* ✅ allow text to wrap fully */
+  white-space: normal;
+  word-wrap: break-word;
+}
+.patients-table thead tr {
+  background: var(--table-head);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.patients-table tbody tr:hover {
+  background: color-mix(in srgb, var(--table-head) 70%, #fff 30%);
+}
+
+/* Filters + Search */
+.patients-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.patients-search,
+.patients-filter {
+  padding: 8px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.patients-search:focus,
+.patients-filter:focus {
+  outline: none;
+  border-color: #e26d6d;
+  box-shadow: 0 0 0 2px rgba(226, 109, 109, 0.2);
+}
