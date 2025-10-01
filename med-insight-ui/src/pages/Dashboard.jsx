@@ -53,6 +53,21 @@ export default function Dashboard() {
         }));
     }, [patients]);
 
+    const topDiagnosisData = useMemo(() => {
+        const counts = {};
+        patients.forEach(p => {
+            (p.diagnoses || []).forEach(d => {
+                counts[d] = (counts[d] || 0) + 1;
+            });
+        });
+
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count) // sort by frequency
+            .slice(0, 5); // ✅ keep only top 5
+    }, [patients]);
+
+
     const doctorData = useMemo(() => {
         const counts = {};
         patients.forEach(p => {
@@ -198,7 +213,7 @@ export default function Dashboard() {
                                 width={600}
                                 height={300}
                                 data={recordsByDate}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                                margin={{ top: 20, right: 80, left: 50, bottom: 50 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis
@@ -240,6 +255,28 @@ export default function Dashboard() {
                             )}
                         </div>
                     </div>
+
+                    {/* Top Diagnoses */}
+                    {topDiagnosisData.length > 0 && (
+                        <div className="dashboard-card">
+                            <h3>Top Diagnoses</h3>
+                            <BarChart
+                                layout="vertical"
+                                width={400}
+                                height={300}
+                                data={topDiagnosisData}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" />
+                                <YAxis dataKey="name" type="category" width={170} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="count" fill="#e26d6d" />
+                            </BarChart>
+                        </div>
+                    )}
+
                 </div>
             )}
 
