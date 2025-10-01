@@ -7,36 +7,33 @@ import json
 import re
 import uuid
 import os
+import convert_to_pdf as PdfConverter
+import shutil
+from pathlib import Path
 
 # -------------------------------
 # Configs
 # -------------------------------
 
-BUCKET = os.getenv("AWS_BUCKET", "meddoc-raw")
-REGION = os.getenv("AWS_REGION", "us-east-1")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-S3_BUCKET = BUCKET
+RAW_BUCKET = "meddoc-raw"
 PROCESSED_BUCKET = "meddoc-processed"
 
 # -------------------------------
-# Initialize boto3 client (auto loads creds from env/credentials file)
+# Initialize boto3 client
 # -------------------------------
-s3 = boto3.client(
-    "s3",
-    region_name=REGION,
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-)
 
-comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
+Path("tmp").mkdir(exist_ok=True)
+s3 = boto3.client("s3")
+converter = PdfConverter.FileConverter(None, "tmp/pdf")
+
+# comprehend_medical = boto3.client("comprehendmedical", region_name="us-east-1")  # Only in us-east-1
+
 def download_from_s3(bucket, key):
     """Download file from S3 to a unique local path."""
     print("downloading from s3")
 
-    # Use the base name of the key + a random UUID
-    base_name = os.path.basename(key)
-    local_path = f"{uuid.uuid4().hex}_{base_name}"
+    # Use the base name of the key
+    local_path = os.path.basename(key)
     
     s3.download_file(bucket, key, local_path)
     print(f"Downloaded s3://{bucket}/{key} to {local_path}")
@@ -46,6 +43,7 @@ def download_from_s3(bucket, key):
 # -------------------------------
 # Grouping function
 # -------------------------------
+
 def group_lines_to_chunks(lines, x_threshold=0.03, y_threshold=0.02,
                           max_chars=1500, overlap=100, min_size=1000, source=None):
     """
@@ -142,62 +140,107 @@ def group_lines_to_chunks(lines, x_threshold=0.03, y_threshold=0.02,
 
     return structured_chunks
 
-# -------------------------------
-# OCR for images
-# -------------------------------
-def extract_text_from_image(path):
-    image = Image.open(path)
-    ocr_data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
-
-    lines = []
-    for i in range(len(ocr_data["text"])):
-        if int(ocr_data["conf"][i]) > 0:  # skip empty / low confidence
-            lines.append({
-                "text": ocr_data["text"][i],
-                "page": 1,
-                "bbox": (
-                    ocr_data["left"][i],
-                    ocr_data["top"][i],
-                    ocr_data["left"][i] + ocr_data["width"][i],
-                    ocr_data["top"][i] + ocr_data["height"][i],
-                ),
-            })
-    return lines
 
 # -------------------------------
 # PDF extraction (if input is PDF)
 # -------------------------------
+
 def extract_text_from_pdf(path):
     doc = fitz.open(path)
     lines = []
+
     for page_num, page in enumerate(doc, start=1):
+        # --- Extract native text blocks ---
         for b in page.get_text("blocks"):
             text, bbox = b[4], b[:4]
             if text.strip():
-                print(text.strip())
                 lines.append({
                     "text": text.strip(),
                     "page": page_num,
-                    "bbox": bbox
+                    "bbox": bbox  # already in page coords
                 })
+
+        # --- Extract images + run OCR ---
+        for img_info in page.get_image_info(xrefs=True):
+            xref = img_info["xref"]
+            image_bbox = img_info["bbox"]  # already in page coords
+
+            try:
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                pil_img = Image.open(io.BytesIO(image_bytes))
+            except Exception as e:
+                print(f"⚠ Could not extract image xref={xref} on page {page_num}: {e}")
+                continue
+
+            img_w, img_h = pil_img.size
+
+            # Run OCR
+            ocr_data = pytesseract.image_to_data(
+                pil_img, output_type=pytesseract.Output.DICT
+            )
+
+            for i in range(len(ocr_data["text"])):
+                if int(ocr_data["conf"][i]) > 0 and ocr_data["text"][i].strip():
+                    x, y, w, h = (ocr_data["left"][i],
+                                  ocr_data["top"][i],
+                                  ocr_data["width"][i],
+                                  ocr_data["height"][i])
+
+                    # Scale OCR bbox → page coords
+                    x0_page = image_bbox[0] + (x / img_w) * (image_bbox[2] - image_bbox[0])
+                    y0_page = image_bbox[1] + (y / img_h) * (image_bbox[3] - image_bbox[1])
+                    x1_page = image_bbox[0] + ((x + w) / img_w) * (image_bbox[2] - image_bbox[0])
+                    y1_page = image_bbox[1] + ((y + h) / img_h) * (image_bbox[3] - image_bbox[1])
+
+                    lines.append({
+                        "text": ocr_data["text"][i],
+                        "page": page_num,
+                        "bbox": (x0_page, y0_page, x1_page, y1_page)
+                    })
+
     return lines
 
-import re
-import os
 
 def get_json_from_s3_file(s3_folder, s3_file):
-    S3_KEY = f"{s3_folder}/{s3_file}"
-    print(f"Processing s3://{S3_BUCKET}/{S3_KEY}")
-    local_file = download_from_s3(S3_BUCKET, S3_KEY)
-    print(f"Downloaded {S3_KEY} to {local_file}")
-    try:
-        if local_file.lower().endswith(".pdf"):
-            lines = extract_text_from_pdf(local_file)
-        else:
-            lines = extract_text_from_image(local_file)
+    print(f"Processing s3://{RAW_BUCKET}/{s3_folder}/{s3_file}")
 
-        chunks = group_lines_to_chunks(lines, source=f"s3://{S3_BUCKET}/{S3_KEY}")
-        print(f"Extracted {len(chunks)} chunks from {local_file}")
+    # Extract a clean base name
+    base_name = os.path.splitext(os.path.basename(s3_file))[0]
+    target_file = Path(os.path.join("tmp/pdf", base_name + ".pdf"))
+    raw_file = Path(os.path.join("tmp/pdf", s3_file))
+
+    # Download the raw file to tmp/pdf
+    os.makedirs(os.path.dirname(raw_file), exist_ok=True)
+    s3.download_file(RAW_BUCKET, f"{s3_folder}/{s3_file}", raw_file)
+    print(f"Downloaded {s3_folder}/{s3_file} to tmp/pdf")
+
+    try:
+        # if not pdf, convert to pdf; then save a copy to raw bucket (for future reference)
+        if not raw_file.suffix.lower() == ".pdf":
+            converter.convert_file(raw_file, target_file)
+            with open(target_file, "rb") as f:
+                s3.put_object(
+                    Bucket=RAW_BUCKET,
+                    Key=f"{s3_folder}/{base_name}.pdf",
+                    Body=f,
+                    ContentType="application/pdf"
+                )
+        # if pdf, copy to target_file to be processed
+        else:
+            if not os.path.exists(target_file):
+                os.makedirs(os.path.dirname(target_file), exist_ok=True)
+                shutil.copy(raw_file, target_file)
+
+        # Lines extraction from Texts and Images in PDF
+        lines = extract_text_from_pdf(target_file)
+
+        # Combine Lines into Chunks
+        chunks = group_lines_to_chunks(
+            lines,
+            source=f"s3://{RAW_BUCKET}/{s3_folder}/{base_name}.pdf"
+        )
+        print(f"Extracted {len(chunks)} chunks from {s3_file}")
 
         # -------------------------------
         # Prepare JSON object (list of dicts)
@@ -209,11 +252,13 @@ def get_json_from_s3_file(s3_folder, s3_file):
                 "page": ch["page"],
                 "text": ch["text"],
                 "source": ch["source"],
+                "bbox": ch["bbox"],
                 "type": f"{s3_folder}"
             })
         print(f"Prepared {len(json_chunks)} JSON chunks")
 
         return json_chunks
+    
     except Exception as e:
         print(f"Error processing file: {e}")
         raise
@@ -222,33 +267,42 @@ def get_json_from_s3_file(s3_folder, s3_file):
         # -------------------------------
         # Clean up temporary file
         # -------------------------------
-        if os.path.exists(local_file):
-            os.remove(local_file)
-            print(f"Deleted temporary file {local_file}")
+        if os.path.exists(raw_file):
+            os.remove(raw_file)
+            print(f"Deleted temporary file {raw_file}")
+        if os.path.exists(target_file):
+            os.remove(target_file)
+            print(f"Deleted temporary file {target_file}")
+        if os.path.exists("tmp"):
+            shutil.rmtree("tmp")
+            print('Deleted temporary folder "tmp"')
 
-def process_patient_with_comprehend(chunks):
-    """Run Comprehend Medical on extracted chunks of patient data."""
-    results = []
-    for ch in chunks:
-        try:
-            resp = comprehend_medical.detect_entities_v2(Text=ch["text"])
-            entities = resp.get("Entities", [])
-            results.append({
-                "chunk_id": ch["chunk_id"],
-                "page": ch["page"],
-                "text": ch["text"],
-                "entities": entities,
-                "source": ch["source"],
-                "type": ch["type"]
-            })
-        except Exception as e:
-            print(f"ComprehendMedical failed: {e}")
-            results.append(ch)  # fallback
-    return results
+
+# def process_patient_with_comprehend(chunks):
+#     """Run Comprehend Medical on extracted chunks of patient data."""
+#     results = []
+#     for ch in chunks:
+#         try:
+#             resp = comprehend_medical.detect_entities_v2(Text=ch["text"])
+#             entities = resp.get("Entities", [])
+#             results.append({
+#                 "chunk_id": ch["chunk_id"],
+#                 "page": ch["page"],
+#                 "text": ch["text"],
+#                 "entities": entities,
+#                 "source": ch["source"],
+#                 "type": ch["type"]
+#             })
+#         except Exception as e:
+#             print(f"ComprehendMedical failed: {e}")
+#             results.append(ch)  # fallback
+#     return results
+
 
 # -------------------------------
 # Upload JSON to S3
 # -------------------------------
+
 def upload_json_to_s3(json_data, folder, file_name):
     """
     Uploads json_data to S3 with a unique name in the given folder.
@@ -257,7 +311,7 @@ def upload_json_to_s3(json_data, folder, file_name):
     try:
         # Generate a unique output file name
         output_file = f"{os.path.splitext(os.path.basename(file_name))[0]}.json"
-        s3_key = f"{folder}/{output_file}"
+        s3_path = f"{folder}/{output_file}"
 
         # Convert to JSON string
         json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
@@ -265,7 +319,7 @@ def upload_json_to_s3(json_data, folder, file_name):
         # Upload to S3
         s3.put_object(
             Bucket=PROCESSED_BUCKET,
-            Key=s3_key,
+            Key=s3_path,
             Body=json_str.encode("utf-8"),
             ContentType="application/json"
         )
@@ -273,46 +327,18 @@ def upload_json_to_s3(json_data, folder, file_name):
         print(f"Error uploading JSON to S3: {e}")
         raise
 
-    return s3_key
+    return s3_path
 
 # -------------------------------
 # Example Usage
 # -------------------------------
+
 if __name__ == "__main__":
-    folder = "guidelines"
-    file = "MOH_GUIDELINE_FINAL_BOOK_EBOOK_SINGLE_compressed.pdf"
+    folder = "knowledge"
+    file = "medicine.png"
     json_data = get_json_from_s3_file(folder, file)
-    
-    # output_file = f"{os.path.splitext(os.path.basename(file))[0]}.json"  # You can change the filename
-    
-    # with open(output_file, "w", encoding="utf-8") as f:
-    #     json.dump(json_data, f, ensure_ascii=False, indent=4)
+    s3_path = upload_json_to_s3(json_data, folder, file)
 
-    # # Convert JSON data to string
-    # json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
-
-    # s3_output_key = f"output_{folder}/{output_file}" # Change to whatever the folder name you want
-
-    # # Upload JSON to S3
-    # s3.put_object(
-    #     Bucket=S3_BUCKET,
-    #     Key=s3_output_key,
-    #     Body=json_str.encode("utf-8"),
-    #     ContentType="application/json"
-    # )
-
-    output_file = f"{uuid.uuid4().hex}_{os.path.splitext(os.path.basename(file))[0]}.json"
-    PROCESSED_BUCKET = "meddoc-processed"
-    s3_output_key = f"{folder}/{output_file}"
-
-    json_str = json.dumps(json_data, ensure_ascii=False, indent=4)
-    s3.put_object(
-        Bucket=PROCESSED_BUCKET,
-        Key=s3_output_key,
-        Body=json_str.encode("utf-8"),
-        ContentType="application/json"
-    )
-
-    print(f"Saved {len(json_data)} items to {output_file}")
+    print(f"Saved {len(json_data)} items to {s3_path}")
 
 

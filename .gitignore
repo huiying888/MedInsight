@@ -7,3 +7,7 @@ __pycache__/query.cpython-39.pyc
 med-insight-ui/package-lock.json
 med-insight-ui/package-lock.json
 med-insight-ui/package.json
+__pycache__/convert_to_pdf.cpython-312.pyc
+__pycache__/embedding.cpython-312.pyc
+__pycache__/json_from_s3_file.cpython-312.pyc
+__pycache__/query.cpython-312.pyc

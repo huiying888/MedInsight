@@ -6,6 +6,9 @@ import botocore
 from botocore.exceptions import ClientError
 import faiss
 import numpy as np
+from threading import Lock
+
+faiss_lock = Lock()
 
 # -------------------------------
 # Config
@@ -37,82 +40,103 @@ bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 def get_embedding(text):
     for attempt in range(5):
         try:
+            print(f"➡️ Calling Bedrock invoke_model (attempt {attempt+1}) ...")
             response = bedrock.invoke_model(
                 modelId=BEDROCK_MODEL,
                 body=json.dumps({"inputText": text})
             )
-            resp_body = json.loads(response["body"].read())
-            return np.array(resp_body["embedding"], dtype="float32")
+            print("✅ Got response object from Bedrock")
+
+            print("➡️ Reading response body ...")
+            body_bytes = response["body"].read()
+            print(f"✅ Read {len(body_bytes)} bytes")
+
+            print("➡️ Parsing JSON response ...")
+            resp_body = json.loads(body_bytes)
+            print("✅ Parsed response keys:", list(resp_body.keys()))
+
+            emb = resp_body.get("embedding")
+            if not emb:
+                raise ValueError("❌ No 'embedding' key in Bedrock response!")
+
+            print(f"✅ Embedding received with length {len(emb)}")
+            return np.array(emb, dtype="float32")
+
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'ThrottlingException':
                 print("⏳ Throttled by Bedrock, retrying...")
                 time.sleep(2 ** attempt)
             else:
+                print("❌ Bedrock ClientError:", e)
                 raise
+        except Exception as e:
+            print("❌ General exception in get_embedding:", e)
+            raise
+
     raise Exception("❌ Failed to get embedding after retries")
+
 
 # -------------------------------
 # Build or update FAISS index
 # -------------------------------
 def build_or_update_faiss(embeddings, metadata_list):
-    # Try loading existing index + metadata
-    try:
-        s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
-        s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
+    with faiss_lock:
+        index = None
+        existing_metadata = []
 
-        index = faiss.read_index(INDEX_FILE)
-        with open(META_FILE, "r") as f:
-            existing_metadata = json.load(f)
+        try:
+            s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
+            s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
 
-        print("📥 Existing FAISS index + metadata loaded.")
+            index = faiss.read_index(INDEX_FILE)
+            with open(META_FILE, "r") as f:
+                existing_metadata = json.load(f)
+            print(f"📥 Existing FAISS index loaded with {index.ntotal} vectors")
 
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
-            raise RuntimeError("❌ FAISS index or metadata not found in S3. Aborting.")
-        else:
-            raise  # rethrow other S3 errors
+        except ClientError as e:
+            if e.response["Error"]["Code"] in ["NoSuchKey", "404"]:
+                print("⚠️ No existing FAISS index found in S3. A new one will be created.")
+                index = None
+                existing_metadata = []
+            else:
+                raise
 
-    except FileNotFoundError:
-        raise RuntimeError("❌ Local FAISS index or metadata file missing. Aborting.")
+        # Deduplicate based on (file, chunk_id)
+        existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
+        new_embeddings, new_metadata = [], []
 
-    except Exception as e:
-        raise RuntimeError(f"❌ Unexpected error while loading FAISS index/metadata: {e}")
-    
-    # Deduplicate based on (file, chunk_id)
-    existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
-    new_embeddings = []
-    new_metadata = []
+        for emb, meta in zip(embeddings, metadata_list):
+            key = (meta["file"], meta["chunk_id"])
+            if key not in existing_keys:
+                new_embeddings.append(emb)
+                new_metadata.append(meta)
 
-    for emb, meta in zip(embeddings, metadata_list):
-        key = (meta["file"], meta["chunk_id"])
-        if key not in existing_keys:
-            new_embeddings.append(emb)
-            new_metadata.append(meta)
+        if not new_embeddings:
+            print("✅ No new data to add.")
+            return
 
-    if not new_embeddings:
-        print("✅ No new data to add.")
-        return
+        new_embeddings = np.vstack(new_embeddings)
 
-    new_embeddings = np.vstack(new_embeddings)
+        # If first time, init FAISS
+        if index is None:
+            dim = new_embeddings.shape[1]
+            index = faiss.IndexFlatL2(dim)
+            print(f"🆕 Created new FAISS index with dim={dim}")
 
-    # If first time, init FAISS
-    if index is None:
-        dim = new_embeddings.shape[1]
-        index = faiss.IndexFlatL2(dim)
+        # Append new data
+        index.add(new_embeddings)
+        all_metadata = existing_metadata + new_metadata
 
-    # Append new data
-    index.add(new_embeddings)
-    all_metadata = existing_metadata + new_metadata
+        # Save updated index + metadata locally
+        faiss.write_index(index, INDEX_FILE)
+        with open(META_FILE, "w") as f:
+            json.dump(all_metadata, f)
 
-    # Save updated index + metadata
-    faiss.write_index(index, INDEX_FILE)
-    with open(META_FILE, "w") as f:
-        json.dump(all_metadata, f)
+        # Upload back to S3
+        s3.upload_file(INDEX_FILE, S3_VECTOR_BUCKET, INDEX_FILE)
+        s3.upload_file(META_FILE, S3_VECTOR_BUCKET, META_FILE)
+        print(f"🎉 FAISS index updated with {len(new_metadata)} new chunks. Total vectors: {index.ntotal}")
 
-    # Upload back to S3
-    s3.upload_file(INDEX_FILE, S3_VECTOR_BUCKET, INDEX_FILE)
-    s3.upload_file(META_FILE, S3_VECTOR_BUCKET, META_FILE)
-    print(f"🎉 FAISS index updated with {len(new_metadata)} new chunks.")
 
 # -------------------------------
 # Process JSON from S3
@@ -120,6 +144,8 @@ def build_or_update_faiss(embeddings, metadata_list):
 def process_s3_json(folder=None, file=None):
     prefix = f"{folder}/" if folder else ""
     resp = s3.list_objects_v2(Bucket=S3_INPUT_BUCKET, Prefix=prefix)
+
+
     if "Contents" not in resp:
         print(f"⚠️ No files found in folder '{folder}'.")
         return
@@ -134,16 +160,16 @@ def process_s3_json(folder=None, file=None):
         if file and os.path.basename(key) != file:
             continue
 
-        print(f"📥 Processing {key} ...")
         try:
             file_obj = s3.get_object(Bucket=S3_INPUT_BUCKET, Key=key)
             content = file_obj["Body"].read().decode("utf-8")
             json_data = json.loads(content)
-            
+
             for ch in json_data:
                 emb = get_embedding(ch["text"])
                 all_embeddings.append(emb)
-
+                print("   ↳ Appending metadata")
+                
                 metadata = {
                     "file": key,
                     "chunk_id": ch["chunk_id"],
@@ -156,7 +182,6 @@ def process_s3_json(folder=None, file=None):
 
         except Exception as e:
             raise RuntimeError(f"❌ Hard failure while processing {key}: {e}")
-
 
     if all_embeddings:
         embeddings_np = np.vstack(all_embeddings)
