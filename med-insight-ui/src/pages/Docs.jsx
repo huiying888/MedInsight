@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 const BUCKET = process.env.REACT_APP_S3_BUCKET || "meddoc-raw";
 const REGION = process.env.REACT_APP_S3_REGION || "us-east-1";
 const S3_BASE = `https://${BUCKET}.s3.${REGION}.amazonaws.com`;
+const API_BASE = process.env.REACT_APP_API_BASE || window.location.origin;
 const NS = "http://s3.amazonaws.com/doc/2006-03-01/";
 
 const LS = {
@@ -342,10 +343,28 @@ export default function Docs() {
                       {showSizes && <td style={{ textAlign: "right" }}>{sizeKB}</td>}
                       <td>{when}</td>
                       <td>
-                        <a href={f.url} target="_blank" rel="noreferrer" className="send-button" style={{ textDecoration: "none", padding: "6px 14px" }}>
+                        <a
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="send-button"
+                          style={{ textDecoration: "none", padding: "6px 14px", marginRight: 8 }}
+                        >
                           Open
                         </a>
+
+                        <a
+                          href={`${API_BASE}/summary?key=${encodeURIComponent(f.key)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="send-button"
+                          style={{ textDecoration: "none", padding: "6px 14px" }}
+                          title="View AI summary"
+                        >
+                          Summary
+                        </a>
                       </td>
+
                     </tr>
                   );
                 })}
