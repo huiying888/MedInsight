@@ -50,27 +50,30 @@ def _load_chunks_text(folder: str, base_json_name: str, cap_chars=12000, max_chu
     return "\n\n".join(out)
 
 def _summarize_with_nova(context: str, title: str) -> str:
-    """
-    Call Amazon Nova Pro (Converse) on Bedrock to get a concise clinical summary in Markdown.
-    """
-    prompt = f"""You are a clinical summarizer for Malaysian healthcare professionals.
-Write a concise, factual summary for "{title}".
+    prompt = f"""
+        You are a SUMMARY WRITER. Summarize "{title}" for Malaysian clinicians in LESS THAN 200 CHARACTERS.
+        Plan your summary carefully. Keep it concise and to the point.
+        If there is not enough CHARACTERS left to complete your summary, you may have a few extra CHARACTERS.
 
-Return:
-- A short abstract (3–5 sentences)
-- 5–10 bullet points of key facts/dates/values
-- A short "Clinical actionables" section
+        Compile your answer WITHIN 1 (ONE) short paragraph consisting only the most critical facts.
+        DO NOT USE FORMATTINGS, BULLETS, OR NEWLINES. Use PLAINTEXT ONLY.
+        Facts must come only from the context below:
 
-Only use the facts from this extracted text:
-{context}
-"""
+        <START CONTEXT>
+
+        {context}
+
+        <END CONTEXT>
+    """
     body = {
         "messages": [{"role": "user", "content": [{"text": prompt}]}],
-        "inferenceConfig": {"maxTokens": 700, "temperature": 0.2, "topP": 0.9},
+        "inferenceConfig": {"maxTokens": 100, "temperature": 0.2, "topP": 0.9},
     }
     resp = bedrock.converse(modelId=LLM_MODEL, **body)
     blocks = resp.get("output", {}).get("message", {}).get("content", [])
-    return "".join(b.get("text", "") for b in blocks).strip() or "No summary produced."
+    text = "".join(b.get("text", "") for b in blocks).strip().replace("\n", " ")
+
+    return text
 
 def generate_and_store_summary(folder: str, original_filename: str) -> str:
     """
@@ -79,15 +82,6 @@ def generate_and_store_summary(folder: str, original_filename: str) -> str:
     """
     base_json = _base_json_name(original_filename)
     skey = _summary_key(folder, base_json)
-
-    # If cached, return immediately
-    try:
-        s3.head_object(Bucket=PROCESSED_BUCKET, Key=skey)
-        return skey
-    except ClientError as e:
-        if int(e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)) not in (403, 404):
-            raise  # other error (e.g., perms)
-        # 404 -> continue to generate
 
     # Build context from your already-produced chunks JSON
     context = _load_chunks_text(folder, base_json)

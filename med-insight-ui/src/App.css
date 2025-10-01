@@ -1401,7 +1401,7 @@ html[data-theme="dark"] .cta-tertiary:hover {
   border: 1px solid var(--card-border);
   border-radius: 14px;
   padding: 12px;
-  min-height: 60vh;
+  height: calc(100vh - 64px);;
 }
 
 /* Top bar */
@@ -1680,3 +1680,94 @@ html[data-theme="dark"] .cta-tertiary:hover {
   border-color: #e26d6d;
   box-shadow: 0 0 0 2px rgba(226, 109, 109, 0.2);
 }
+
+/* Two-panel layout */
+.docs-two {
+  display: grid;
+  grid-template-columns: 1fr 560px;   /* left flexes, right fixed */
+  gap: 0;
+  min-height: calc(100vh - 64px);     /* adjust 64px to your header height */
+}
+
+/* Left panel (explorer) */
+.docs-pane-left { min-width: 0; }     /* prevents table overflow */
+
+/* Right panel (persistent preview) */
+.docs-pane-right {
+  position: sticky;
+  top: 64px;                          /* same as header height */
+  height: calc(100vh - 64px);
+  background: #f4f4f7;
+  border-left: 6px solid #bdbac2;
+  box-shadow: -10px 0 30px rgba(0,0,0,.08);
+  display: flex; flex-direction: column;
+  z-index: 1;                         /* above left bg, not blocking clicks */
+  overflow: hidden;                   /* children manage their own scrolls */
+}
+
+/* Right header */
+.right-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; background: #d9d7dd; border-bottom: 1px solid #c7c5cb;
+}
+.right-title {
+  font-weight: 700; font-size: 14px; color: #2a2930;
+  max-width: 420px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.right-close {
+  border: none; background: #c24f5a; color: #fff; font-weight: 800;
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+}
+.right-close:hover { background: #aa424d; }
+
+/* Right body layout */
+.right-body { display: flex; flex-direction: column; gap: 12px; padding: 12px; height: 100%; }
+
+/* PDF area scrolls independently */
+.right-pdf {
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff; border: 1px solid #cfcfd6; border-radius: 8px;
+}
+.right-empty { height: 100%; display: grid; place-items: center; color: #666; }
+
+/* Summary area: compact, own scroll if needed */
+.right-summary {
+  flex: 0 0 auto;
+  max-height: 160px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff; border: 1px solid #cfcfd6; border-radius: 8px;
+  padding: 10px 12px;
+}
+.right-summary-title { font-weight: 700; font-size: 13px; margin: 0 0 6px 0; color: #2a2930; }
+.right-summary-text { margin: 0; line-height: 1.5; font-size: 13.5px; }
+.right-summary-text.muted { color: #777; }
+
+/* Skeleton & error (reuse) */
+.mi-skel { display: grid; gap: 8px; }
+.mi-skel-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,.06), rgba(0,0,0,.12), rgba(0,0,0,.06));
+  background-size: 200% 100%; animation: mi-sh 1.4s infinite;
+}
+.mi-skel-line.short { width: 70%; }
+@keyframes mi-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.mi-error { color: #b00020; background: #fdecee; border: 1px solid #fac6cc; padding: 8px; border-radius: 8px; }
+
+/* Optional responsive: collapse to single column on narrow screens */
+@media (max-width: 1200px) {
+  .docs-two { grid-template-columns: 1fr; }
+  .docs-pane-right { position: fixed; right: 0; top: 64px; width: 92vw; height: calc(100vh - 64px); z-index: 1000; }
+}
+
+.docs-two { 
+  display: grid;
+  grid-template-columns: minmax(760px, 1fr) 560px; /* more space for the list */
+}
+
+/* utility to ensure inner scroll areas can actually shrink */
+.minh0 { min-height: 0; }
+.ohid  { overflow: hidden; }
+.oauto { overflow: auto; }
