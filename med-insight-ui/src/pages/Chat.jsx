@@ -96,69 +96,42 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 function highlightTextToHTML(text, highlights = []) {
-  if (!text) return "";
+  if (!text || highlights.length === 0) return escapeHtml(text);
 
-  // Escape HTML safely
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, (m) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[m]));
+  // Normalize text for comparison
+  const normalizeText = (str) => str.toLowerCase().replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  const normalizedText = normalizeText(text);
+  
+  // Check if this text item should be highlighted
+  const shouldHighlight = highlights.some(highlight => {
+    const normalizedHighlight = normalizeText(highlight);
+    
+    // Exact match
+    if (normalizedText === normalizedHighlight) return true;
+    
+    // For single words, check exact word match
+    if (!normalizedHighlight.includes(' ') && !normalizedText.includes(' ')) {
+      return normalizedText === normalizedHighlight;
+    }
+    
+    // For phrases, check if text is part of the phrase
+    if (normalizedHighlight.includes(' ')) {
+      const highlightWords = normalizedHighlight.split(' ');
+      const textWords = normalizedText.split(' ');
+      
+      // Check if all text words are in the highlight phrase
+      return textWords.every(word => highlightWords.includes(word));
+    }
+    
+    return false;
+  });
+
+  if (shouldHighlight) {
+    return `<mark style="background-color:yellow">${escapeHtml(text)}</mark>`;
   }
-
-  // Normalize: strip punctuation + collapse whitespace + lowercase
-  function normalize(str) {
-    return str
-      .replace(/[.,:;!?\ –—()\[\]{}'"`]/g, "") // remove punctuation
-      .replace(/\s+/g, " ") // collapse whitespace
-      .toLowerCase()
-      .trim();
-  }
-
-  // Sort highlights by length (longer first = phrase priority)
-  const sorted = Array.from(new Set(highlights.map((h) => h.trim()).filter(Boolean)))
-    .sort((a, b) => b.length - a.length);
-
-  console.log("🔍 highlightTextToHTML: highlights =", sorted);
-
-  if (sorted.length === 0) return escapeHtml(text);
-
-  // Build regex for all highlights (normalize + flexible spaces)
-  const normalizedHighlights = sorted.map(normalize);
-  const pattern = normalizedHighlights.map((s) => s.replace(/ /g, "\\s+")).join("|");
-  const re = new RegExp(pattern, "gi");
-
-  console.log("🧩 highlightTextToHTML: regex =", re);
-
-  // Work on normalized text but map back to original string
-  const normalizedText = normalize(text);
-  let result = "";
-  let lastIndex = 0;
-
-  let match;
-  while ((match = re.exec(normalizedText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-
-    // Map normalized index back to original substring
-    const origSub = text.substring(start, end);
-
-    // Append plain + highlighted
-    result += escapeHtml(text.slice(lastIndex, start));
-    result += `<mark style="background-color:yellow">${escapeHtml(origSub)}</mark>`;
-
-    lastIndex = end;
-  }
-
-  // Append trailing part
-  result += escapeHtml(text.slice(lastIndex));
-
-  console.log("✅ highlightTextToHTML: result preview =", result);
-
-  return result;
+  
+  return escapeHtml(text);
 }
 
 export default function Chat() {
@@ -224,25 +197,40 @@ export default function Chat() {
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
-  // ✅ Extract highlights only from latest sources
+  // ✅ Extract highlights - both phrases and individual words
   const pdfHighlights = latestSources.flatMap((s) => {
     if (!s.highlight) return [];
 
-    // Ensure highlight is a string
     const highlightStr = Array.isArray(s.highlight)
-      ? s.highlight.join("\n")
+      ? s.highlight.join(" ")
       : String(s.highlight);
 
-    return highlightStr
-      .split(/\n|[,;]+|\s{2,}|\s-\s/)
-      .flatMap((h) => {
-        if (h.includes(":")) {
-          const [left, right] = h.split(":");
-          return [left.trim(), right.trim()].filter(Boolean);
-        }
-        return [h.trim()];
-      })
-      .filter(Boolean);
+    const highlights = [];
+    
+    // Add the complete string
+    highlights.push(highlightStr.trim());
+    
+    // Add meaningful phrases (2-4 words)
+    const words = highlightStr.split(/\s+/);
+    for (let i = 0; i < words.length - 1; i++) {
+      // 2-word phrases
+      const phrase2 = words.slice(i, i + 2).join(' ').trim();
+      if (phrase2.length > 5) highlights.push(phrase2);
+      
+      // 3-word phrases
+      if (i < words.length - 2) {
+        const phrase3 = words.slice(i, i + 3).join(' ').trim();
+        if (phrase3.length > 8) highlights.push(phrase3);
+      }
+    }
+    
+    // Add individual meaningful words
+    words.forEach(word => {
+      const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
+      if (cleanWord.length > 3) highlights.push(cleanWord);
+    });
+    
+    return [...new Set(highlights)].filter(h => h && h.length > 3);
   });
 
 
