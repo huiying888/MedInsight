@@ -279,10 +279,11 @@ class FileConverter:
             print(f"✗ Error converting {Path(input_path).name}: {str(e)}")
             return False
         
-    def convert_file(self, file_path):
+    def convert_file(self, file_path, output_path=None):
         """Convert a single file to PDF based on its extension"""
         file_path = Path(file_path)
-        output_path = self.output_folder / f"{file_path.stem}.pdf"
+        if not output_path:
+            output_path = self.output_folder / f"{file_path.stem}.pdf"
         
         ext = file_path.suffix.lower()
         
