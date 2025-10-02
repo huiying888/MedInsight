@@ -124,7 +124,7 @@ export default function Docs() {
 
   const shortSummary = useMemo(() => {
     const t = (drawerSummary || "").replace(/\s+/g, " ").trim();
-    return t.length > 250 ? t.slice(0, 247).trim() + "…" : t;
+    return t;
   }, [drawerSummary]);
 
   // sidebar known prefixes (quick access)
@@ -624,7 +624,7 @@ export default function Docs() {
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: "#2a2930" }}>
-                  AI Summary (≤ 250 chars)
+                  AI Summary
                 </div>
 
                 {drawerLoading && (
