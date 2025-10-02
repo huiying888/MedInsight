@@ -902,7 +902,7 @@ html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
 /* Scrollable area: now smaller */
 .job-panel-body {
   /* smaller, responsive cap */
-  max-height: clamp(160px, 30vh, 320px);
+  max-height: clamp(300px, 30vh, 400px);
   overflow: auto;
   overscroll-behavior: contain;
   padding: 8px 10px;            /* tighter padding */
@@ -913,18 +913,21 @@ html[data-theme="dark"] .hiw-arrow::before { background: #2a3240; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;                     /* reduced from 10px */
-  padding: 0;
+  padding: 6px 50px;
   margin: 0;
   overflow-anchor: none;
 }
 
 /* Slightly smaller cards */
 .job-card {
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--card-border, #e5e7eb);
-  border-radius: 10px;          /* was 12px */
-  padding: 8px 10px;            /* was 10px 12px */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;   /* ⬅️ top/bottom 6px, left/right 12px */
+  border-bottom: 1px solid #eee; /* optional row divider */
 }
+
 
 /* Make the job panel narrower while keeping the same height */
 .job-panel--compact {
@@ -1771,3 +1774,24 @@ html[data-theme="dark"] .cta-tertiary:hover {
 .minh0 { min-height: 0; }
 .ohid  { overflow: hidden; }
 .oauto { overflow: auto; }
+
+.typing-dots::after {
+  content: " ";
+  animation: dots 1.5s steps(3, end) infinite;
+}
+
+@keyframes dots {
+  0% { content: " "; }
+  33% { content: "."; }
+  66% { content: ".."; }
+  100% { content: "..."; }
+}
+.center-msg {
+  display: flex;
+  justify-content: center;   /* horizontal center */
+  align-items: flex-start;       /* vertical center */
+  height: 100vh;             /* full viewport height */
+  text-align: center;
+  font-size: 1.2rem;          /* optional: bigger font */
+  color: #555;               /* optional: softer text */
+}
