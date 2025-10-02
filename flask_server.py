@@ -83,14 +83,15 @@ def ask_question():
             else:
                 print(f"Warning: Context {i} is not a valid dict with 'text' key: {type(c)}")
         
-        answer, sources = generate_answer_with_sources(q, contexts, session_id, processed_query)
+        answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_query)
         print(f"Question: {q}\nAnswer: {answer}")
         
         return jsonify({
             "question": q,
             "contexts": contexts_preview,
             "answer": answer.replace("\r\n", "\n").replace("\n", "\n"),
-            "sources": sources
+            "sources": sources,
+            "suggestions": suggestions
         })
     except Exception as e:
         print(f"Error in ask_question: {str(e)}")

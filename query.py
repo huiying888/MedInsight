@@ -145,28 +145,46 @@ def extract_patient_names(query):
     doc = nlp(query)
     names = []
     
-    # Method 1: Named Entity Recognition
+    # Skip general queries that don't contain specific patient names
+    general_patterns = [
+        r"which patient",
+        r"what patient",
+        r"who has",
+        r"list.*patients",
+        r"all patients"
+    ]
+    
+    for pattern in general_patterns:
+        if re.search(pattern, query, re.IGNORECASE):
+            print("Patient names detected: [] (general query)")
+            return []
+    
+    # Method 1: Named Entity Recognition (but filter out medical terms)
+    medical_terms = {'allergy', 'penicillin', 'peanuts', 'diabetes', 'asthma', 'hypertension'}
     for ent in doc.ents:
-        if ent.label_ == "PERSON":
+        if ent.label_ == "PERSON" and ent.text.lower() not in medical_terms:
             names.append(ent.text.strip())
     
-    # Method 2: Pattern matching for common formats
+    # Method 2: Pattern matching for specific patient references
     patterns = [
         r"(?:patient|mr\.?|mrs\.?|ms\.?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
         r"([A-Z][a-z]+\s+bin\s+[A-Z][a-z]+)",  # Malaysian format
         r"([A-Z][a-z]+\s+binti\s+[A-Z][a-z]+)",  # Malaysian format
-        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})(?:'s|\s+(?:data|record|report|result))"
+        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})(?:'s|\s+(?:allergy|data|record|report|result))"
     ]
     
     for pattern in patterns:
         matches = re.findall(pattern, query, re.IGNORECASE)
-        names.extend([match.strip() for match in matches])
+        for match in matches:
+            # Filter out medical terms that might be captured
+            if match.lower() not in medical_terms and not any(term in match.lower() for term in medical_terms):
+                names.append(match.strip())
     
     # Clean and deduplicate
     cleaned_names = []
     for name in names:
         name = re.sub(r'^(mr|mrs|ms|patient)\s+', '', name, flags=re.IGNORECASE).strip()
-        if name and len(name.split()) <= 4:  # reasonable name length
+        if name and len(name.split()) <= 4 and name.lower() not in medical_terms:
             cleaned_names.append(name)
     
     # Remove duplicates while preserving order
@@ -187,6 +205,12 @@ def extract_keywords(query):
     patient_names = extract_patient_names(query)
     keywords.extend(patient_names)
     
+    # Extract medical terms and allergies
+    medical_terms = ['peanuts', 'penicillin', 'allergy', 'allergic', 'diabetes', 'asthma', 'hypertension']
+    for term in medical_terms:
+        if term.lower() in query.lower():
+            keywords.append(term)
+    
     # Extract other important entities
     for ent in doc.ents:
         if ent.label_ in ["ORG", "GPE", "DATE", "CARDINAL"]:
@@ -206,14 +230,14 @@ def keyword_search(query, max_hits=5):
                 break
     return results
 
-def hybrid_search(query, session_id="default", top_k=None, keyword_hits=5):
+def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
     """Dynamic search with patient context awareness."""
     # Update patient context and resolve pronouns
     processed_query = update_patient_context(query, session_id)
     
     # Dynamically set top_k if not provided
     if top_k is None:
-        top_k = 10 if len(processed_query.split()) <= 3 else 5
+        top_k = 15 if len(processed_query.split()) <= 3 else 10
 
     # Use processed query for FAISS search
     faiss_results = query_faiss(processed_query, k=top_k)
@@ -224,11 +248,22 @@ def hybrid_search(query, session_id="default", top_k=None, keyword_hits=5):
     for keyword in keywords:
         keyword_results.extend(keyword_search(keyword, max_hits=keyword_hits))
 
-    # Merge results
-    seen = {id(r) for r in faiss_results}
-    merged = faiss_results.copy()
+    # Merge results using text-based deduplication
+    seen_texts = set()
+    merged = []
+    
+    # Add FAISS results first
+    for r in faiss_results:
+        text_key = r["text"][:100].lower()  # Use first 100 chars as key
+        if text_key not in seen_texts:
+            seen_texts.add(text_key)
+            merged.append(r)
+    
+    # Add keyword results
     for r in keyword_results:
-        if id(r) not in seen:
+        text_key = r["text"][:100].lower()
+        if text_key not in seen_texts:
+            seen_texts.add(text_key)
             merged.append(r)
 
     # Filter by current patient if available
@@ -245,7 +280,9 @@ def hybrid_search(query, session_id="default", top_k=None, keyword_hits=5):
             merged = patient_filtered
             print(f"🔹 Using only {len(patient_filtered)} patient-specific results for {current_patient_name}")
         else:
-            print(f"🔹 No specific results found for {current_patient_name}, using all {len(merged)} results")
+            # If no patient-specific results found, return empty list to indicate no data
+            print(f"🔹 No records found for {current_patient_name}")
+            merged = []
 
     print(f"🔹 Total merged results: {len(merged)}")
     return merged, processed_query
@@ -306,6 +343,12 @@ def update_patient_context(question: str, session_id: str) -> str:
     if patient_names:
         current_patient[session_id] = patient_names[0]
         print(f"Updated patient context for session {session_id}: {patient_names[0]}")
+    else:
+        # Clear patient context if no patient names found in new question
+        # This prevents old patient context from interfering with new queries
+        if session_id in current_patient:
+            print(f"Clearing patient context for session {session_id} - no patient names in current query")
+            del current_patient[session_id]
     
     # Get current patient for this session
     patient = current_patient.get(session_id)
@@ -335,16 +378,123 @@ def get_patient_context(session_id: str) -> Optional[str]:
     return current_patient.get(session_id)
 
 
+def generate_query_suggestions(session_id="default", contexts=None):
+    """Generate 4 relevant follow-up questions based on patient context and conversation history."""
+    current_patient_name = get_patient_context(session_id)
+    memory_context = get_memory_context(session_id, max_turns=3)
+    
+    # Only use valid patient names (not processed queries)
+    valid_patient = None
+    if current_patient_name and len(current_patient_name.split()) <= 4 and not any(word in current_patient_name.lower() for word in ['allergy', 'has', 'to', 'penicillin']):
+        valid_patient = current_patient_name
+    
+    # Build context for suggestions - focus on general medical topics from conversation
+    recent_topics = []
+    if memory_context:
+        # Extract medical topics from recent conversation
+        if 'allergy' in memory_context.lower():
+            recent_topics.append('allergies')
+        if 'penicillin' in memory_context.lower():
+            recent_topics.append('antibiotic allergies')
+    
+    topic_context = f"Recent topics discussed: {', '.join(recent_topics)}" if recent_topics else "General medical inquiry"
+    patient_info = f"Current patient: {valid_patient}" if valid_patient else "Multiple patients discussed"
+    
+    # Get the last question to avoid repeating it
+    last_question = ""
+    if memory_context:
+        lines = memory_context.split('\n')
+        for line in reversed(lines):
+            if line.startswith('User:'):
+                last_question = line.replace('User:', '').strip()
+                break
+    
+    prompt = f"""Generate 4 NEW and DIFFERENT medical follow-up questions based on the conversation context. Do NOT repeat the question that was just asked. Focus on related but different medical topics.
+
+{patient_info}
+{topic_context}
+
+Last question asked: {last_question}
+
+Generate 4 DIFFERENT follow-up questions (one per line, no numbering):"""
+
+    try:
+        response = bedrock.invoke_model(
+            modelId=LLM_MODEL,
+            body=json.dumps({
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                "inferenceConfig": {"maxTokens": 200, "temperature": 0.7, "topP": 0.9}
+            })
+        )
+        resp_body = json.loads(response["body"].read())
+        suggestions_text = resp_body["output"]["message"]["content"][0]["text"]
+        
+        # Parse and clean suggestions
+        suggestions = []
+        for line in suggestions_text.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('-') and '?' in line:
+                # Remove any specific patient names that might be hallucinated
+                line = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', 'the patient', line)
+                
+                # Skip if too similar to the last question
+                if last_question and len(set(line.lower().split()) & set(last_question.lower().split())) > 3:
+                    continue
+                    
+                suggestions.append(line)
+        
+        # Take first 4 unique suggestions
+        unique_suggestions = []
+        for s in suggestions:
+            if s not in unique_suggestions:
+                unique_suggestions.append(s)
+        suggestions = unique_suggestions[:4]
+        
+        # If we don't have 4, add generic ones
+        while len(suggestions) < 4:
+            generic = [
+                "What are the latest test results?",
+                "Show me the medication history",
+                "What are the vital signs trends?",
+                "Are there any recent diagnoses?"
+            ]
+            for g in generic:
+                if g not in suggestions:
+                    suggestions.append(g)
+                    break
+        
+        return suggestions[:4]
+    except Exception as e:
+        print(f"Error generating suggestions: {e}")
+        return [
+            "What are the latest test results?",
+            "Show me the medication history", 
+            "What are the vital signs trends?",
+            "Are there any recent diagnoses?"
+        ]
+
 def generate_answer_with_sources(question, contexts, session_id="default", processed_query=None):
     # Use processed query if available, otherwise process the question
     if processed_query is None:
         processed_query = update_patient_context(question, session_id)
     
+    # Check if we have any relevant context
+    if not contexts or len(contexts) == 0:
+        # Only return error if asking about a specific patient
+        current_patient_name = get_patient_context(session_id)
+        if current_patient_name:
+            return f"No records found for patient '{current_patient_name}'. Please verify the patient name is correct.", [], []
+        else:
+            return "No relevant patient records found for this query.", [], []
+    
+    # Check if asking about specific patient but no patient-specific records found
+    current_patient_name = get_patient_context(session_id)
+    if current_patient_name and not any(current_patient_name.lower() in c["text"].lower() for c in contexts):
+        return f"No records found for patient '{current_patient_name}'. Please verify the patient name is correct.", [], []
+    
     # --- Get last chat history for this session ---
     memory_context = get_memory_context(session_id, max_turns=5)
     
-    # --- Get current patient context ---
-    current_patient_name = get_patient_context(session_id)
     patient_context = f"\nCurrent patient in conversation: {current_patient_name}" if current_patient_name else ""
 
     # --- Build context text ---
@@ -354,6 +504,9 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
     prompt = f"""You are a medical assistant.
 Use the following patient records, knowledge base, guidelines and the conversation history
 to answer the question clearly and accurately. 
+
+IMPORTANT: Carefully review ALL patient records provided in the context. Make sure to identify ALL patients that match the criteria in the question.
+
 1. FIRST: Check if the answer to the question can be found in the provided knowledge base and patient records.
 2. IF NOT FOUND: Start your response with "This information is not available in our knowledge base." then provide general medical information
 If the answer is not in the records, say so.{patient_context}
@@ -367,7 +520,7 @@ Context:
 Original Question: {question}
 Processed Question: {processed_query}
 
-Answer:"""
+Answer (make sure to include ALL relevant patients from the context):"""
 
     # --- Call LLM ---
     response = bedrock.invoke_model(
@@ -423,7 +576,10 @@ Answer:"""
         entry["highlight"] = list(entry["highlight"])
         sources.append(entry)
 
-    return answer, sources
+    # --- Generate suggestions ---
+    suggestions = generate_query_suggestions(session_id, contexts)
+
+    return answer, sources, suggestions
 
 
 
@@ -448,13 +604,17 @@ if __name__ == "__main__":
         for c in contexts:
             print("-", c["text"][:200], "...")
 
-        answer, sources = generate_answer_with_sources(q, contexts, session_id, processed_q)
+        answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_q)
 
         print("\n🤖 Nova Pro Answer:\n", answer)
         print("\n📚 Sources:")
         for s in sources:
             print(f"- {s['key']} (Page {s['page']})")
             print(f"  🔎 Highlight: {s['highlight']}\n")
+        
+        print("\n💡 Suggested Questions:")
+        for i, suggestion in enumerate(suggestions, 1):
+            print(f"{i}. {suggestion}")
         
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:

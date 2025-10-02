@@ -176,10 +176,10 @@ export default function Chat() {
       // ✅ Reset sources for this query only
       setLatestSources(sources);
 
-      // Save message with sources
+      // Save message with sources and suggestions
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: (data.answer), sources },
+        { role: "assistant", content: (data.answer), sources, suggestions: data.suggestions || [] },
       ]);
 
       // ✅ Store latest sources for highlighting
@@ -188,7 +188,7 @@ export default function Chat() {
       console.error(err);
       setChatHistory((h) => [
         ...h,
-        { role: "assistant", content: "An error occurred. Please try again." },
+        { role: "assistant", content: "An error occurred. Please try again.", suggestions: [] },
       ]);
     } finally {
       setLoading(false);
@@ -299,7 +299,7 @@ export default function Chat() {
                   m.content
                 )}
 
-                {m.role === "assistant" && m.sources?.length > 0 && (
+                {m.role === "assistant" && (m.sources?.length > 0 || m.suggestions?.length > 0) && (
                   <div
                     style={{
                       marginTop: 10,
@@ -307,19 +307,58 @@ export default function Chat() {
                       paddingTop: 8,
                     }}
                   >
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
-                    <ol style={{ margin: 0, paddingLeft: 18 }}>
-                      {m.sources.map((s, idx) => (
-                        <li key={idx} style={{ marginBottom: 8 }}>
-                          <button
-                            className="source-link"
-                            onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
-                          >
-                            {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
-                          </button>
-                        </li>
-                      ))}
-                    </ol>
+                    {m.sources?.length > 0 && (
+                      <>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
+                        <ol style={{ margin: 0, paddingLeft: 18, marginBottom: 12 }}>
+                          {m.sources.map((s, idx) => (
+                            <li key={idx} style={{ marginBottom: 8 }}>
+                              <button
+                                className="source-link"
+                                onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
+                              >
+                                {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+                      </>
+                    )}
+                    
+                    {m.suggestions?.length > 0 && (
+                      <>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>💡 Suggested Questions</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {m.suggestions.map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              className="suggestion-button"
+                              onClick={() => sendQuery(suggestion)}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: '#f0f8ff',
+                                border: '1px solid #d0e7ff',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontSize: '14px',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = '#e6f3ff';
+                                e.target.style.borderColor = '#b3d9ff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = '#f0f8ff';
+                                e.target.style.borderColor = '#d0e7ff';
+                              }}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
