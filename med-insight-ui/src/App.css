@@ -1401,7 +1401,7 @@ html[data-theme="dark"] .cta-tertiary:hover {
   border: 1px solid var(--card-border);
   border-radius: 14px;
   padding: 12px;
-  min-height: 60vh;
+  height: calc(100vh - 64px);;
 }
 
 /* Top bar */
@@ -1579,3 +1579,195 @@ html[data-theme="dark"] .cta-tertiary:hover {
   align-items: center;
   width: 100%;
 }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  gap: 10px;
+}
+
+.tab {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.tab:hover {
+  border-color: #e26d6d;
+}
+
+.tab.active {
+  background: #e26d6d;
+  color: #fff;
+  border-color: #e26d6d;
+}
+
+/* Patients Table */
+.patients-overview {
+  margin-top: 24px;
+  overflow-x: auto;
+}
+/* Scrollable Patients Table */
+.patients-table-wrapper {
+  max-height: 400px;        /* adjust as needed */
+  overflow-y: auto;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+/* Keep headers sticky */
+.patients-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--table-head);
+  z-index: 2;
+}
+
+/* Optional: make columns fixed width for alignment */
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;   /* ✅ let columns size based on content */
+}
+
+.patients-table th,
+.patients-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+
+  /* ✅ allow text to wrap fully */
+  white-space: normal;
+  word-wrap: break-word;
+}
+.patients-table thead tr {
+  background: var(--table-head);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.patients-table tbody tr:hover {
+  background: color-mix(in srgb, var(--table-head) 70%, #fff 30%);
+}
+
+/* Filters + Search */
+.patients-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.patients-search,
+.patients-filter {
+  padding: 8px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.patients-search:focus,
+.patients-filter:focus {
+  outline: none;
+  border-color: #e26d6d;
+  box-shadow: 0 0 0 2px rgba(226, 109, 109, 0.2);
+}
+
+/* Two-panel layout */
+.docs-two {
+  display: grid;
+  grid-template-columns: 1fr 560px;   /* left flexes, right fixed */
+  gap: 0;
+  min-height: calc(100vh - 64px);     /* adjust 64px to your header height */
+}
+
+/* Left panel (explorer) */
+.docs-pane-left { min-width: 0; }     /* prevents table overflow */
+
+/* Right panel (persistent preview) */
+.docs-pane-right {
+  position: sticky;
+  top: 64px;                          /* same as header height */
+  height: calc(100vh - 64px);
+  background: #f4f4f7;
+  border-left: 6px solid #bdbac2;
+  box-shadow: -10px 0 30px rgba(0,0,0,.08);
+  display: flex; flex-direction: column;
+  z-index: 1;                         /* above left bg, not blocking clicks */
+  overflow: hidden;                   /* children manage their own scrolls */
+}
+
+/* Right header */
+.right-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; background: #d9d7dd; border-bottom: 1px solid #c7c5cb;
+}
+.right-title {
+  font-weight: 700; font-size: 14px; color: #2a2930;
+  max-width: 420px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.right-close {
+  border: none; background: #c24f5a; color: #fff; font-weight: 800;
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+}
+.right-close:hover { background: #aa424d; }
+
+/* Right body layout */
+.right-body { display: flex; flex-direction: column; gap: 12px; padding: 12px; height: 100%; }
+
+/* PDF area scrolls independently */
+.right-pdf {
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff; border: 1px solid #cfcfd6; border-radius: 8px;
+}
+.right-empty { height: 100%; display: grid; place-items: center; color: #666; }
+
+/* Summary area: compact, own scroll if needed */
+.right-summary {
+  flex: 0 0 auto;
+  max-height: 160px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff; border: 1px solid #cfcfd6; border-radius: 8px;
+  padding: 10px 12px;
+}
+.right-summary-title { font-weight: 700; font-size: 13px; margin: 0 0 6px 0; color: #2a2930; }
+.right-summary-text { margin: 0; line-height: 1.5; font-size: 13.5px; }
+.right-summary-text.muted { color: #777; }
+
+/* Skeleton & error (reuse) */
+.mi-skel { display: grid; gap: 8px; }
+.mi-skel-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,.06), rgba(0,0,0,.12), rgba(0,0,0,.06));
+  background-size: 200% 100%; animation: mi-sh 1.4s infinite;
+}
+.mi-skel-line.short { width: 70%; }
+@keyframes mi-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.mi-error { color: #b00020; background: #fdecee; border: 1px solid #fac6cc; padding: 8px; border-radius: 8px; }
+
+/* Optional responsive: collapse to single column on narrow screens */
+@media (max-width: 1200px) {
+  .docs-two { grid-template-columns: 1fr; }
+  .docs-pane-right { position: fixed; right: 0; top: 64px; width: 92vw; height: calc(100vh - 64px); z-index: 1000; }
+}
+
+.docs-two { 
+  display: grid;
+  grid-template-columns: minmax(760px, 1fr) 560px; /* more space for the list */
+}
+
+/* utility to ensure inner scroll areas can actually shrink */
+.minh0 { min-height: 0; }
+.ohid  { overflow: hidden; }
+.oauto { overflow: auto; }
