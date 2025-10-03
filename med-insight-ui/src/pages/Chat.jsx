@@ -197,16 +197,29 @@ export default function Chat() {
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
-  // ✅ Extract highlights from all sources in chat history for the selected PDF
+  // ✅ Extract highlights from the specific message that contains this PDF source
   const pdfHighlights = useMemo(() => {
     if (!selectedPdf) return [];
     
     console.log('Selected PDF:', selectedPdf);
     
-    // Find all sources from all messages that match the selected PDF
-    const allSources = chatHistory
-      .filter(m => m.role === 'assistant' && m.sources)
-      .flatMap(m => m.sources);
+    // Find the specific message that contains this PDF source
+    const messageWithThisPdf = [...chatHistory]
+      .reverse()
+      .find(m => {
+        if (m.role !== 'assistant' || !m.sources) return false;
+        return m.sources.some(s => {
+          const urlMatch = s.url === selectedPdf.url || 
+                          (s.file && selectedPdf.url && selectedPdf.url.includes(s.file)) ||
+                          (s.key && selectedPdf.url && selectedPdf.url.includes(s.key));
+          const pageMatch = s.page === selectedPdf.page;
+          return urlMatch && pageMatch;
+        });
+      });
+    
+    if (!messageWithThisPdf) return [];
+    
+    const allSources = messageWithThisPdf.sources;
     
     console.log('All sources:', allSources);
     

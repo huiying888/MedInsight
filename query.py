@@ -141,55 +141,24 @@ def query_faiss(question, k=3):
 nlp = spacy.load("en_core_web_sm")
 
 def extract_patient_names(query):
-    """Extract patient names from query using multiple methods."""
+    """Extract patient names using NLP entity recognition only."""
     doc = nlp(query)
     names = []
     
-    # Skip general queries that don't contain specific patient names
-    general_patterns = [
-        r"which patient",
-        r"what patient",
-        r"who has",
-        r"list.*patients",
-        r"all patients"
-    ]
-    
-    for pattern in general_patterns:
-        if re.search(pattern, query, re.IGNORECASE):
-            print("Patient names detected: [] (general query)")
-            return []
-    
-    # Method 1: Named Entity Recognition (but filter out medical terms)
-    medical_terms = {'allergy', 'penicillin', 'peanuts', 'diabetes', 'asthma', 'hypertension'}
+    # Use only NLP's PERSON entity recognition
     for ent in doc.ents:
-        if ent.label_ == "PERSON" and ent.text.lower() not in medical_terms:
-            names.append(ent.text.strip())
-    
-    # Method 2: Pattern matching for specific patient references
-    patterns = [
-        r"(?:patient|mr\.?|mrs\.?|ms\.?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-        r"([A-Z][a-z]+\s+bin\s+[A-Z][a-z]+)",  # Malaysian format
-        r"([A-Z][a-z]+\s+binti\s+[A-Z][a-z]+)",  # Malaysian format
-        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})(?:'s|\s+(?:allergy|data|record|report|result))"
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, query, re.IGNORECASE)
-        for match in matches:
-            # Filter out medical terms that might be captured
-            if match.lower() not in medical_terms and not any(term in match.lower() for term in medical_terms):
-                names.append(match.strip())
-    
-    # Clean and deduplicate
-    cleaned_names = []
-    for name in names:
-        name = re.sub(r'^(mr|mrs|ms|patient)\s+', '', name, flags=re.IGNORECASE).strip()
-        if name and len(name.split()) <= 4 and name.lower() not in medical_terms:
-            cleaned_names.append(name)
+        if ent.label_ == "PERSON":
+            # Additional validation: check if it's actually a person name
+            name = ent.text.strip()
+            # Remove possessive 's from names
+            name = name.rstrip("'s")
+            # Skip single words that are likely medical terms
+            if len(name.split()) >= 2 or name[0].isupper():
+                names.append(name)
     
     # Remove duplicates while preserving order
     unique_names = []
-    for name in cleaned_names:
+    for name in names:
         if name.lower() not in [n.lower() for n in unique_names]:
             unique_names.append(name)
     
@@ -197,7 +166,7 @@ def extract_patient_names(query):
     return unique_names
 
 def extract_keywords(query):
-    """Extract general keywords for search."""
+    """Extract general keywords for search using NLP."""
     doc = nlp(query)
     keywords = []
     
@@ -205,15 +174,15 @@ def extract_keywords(query):
     patient_names = extract_patient_names(query)
     keywords.extend(patient_names)
     
-    # Extract medical terms and allergies
-    medical_terms = ['peanuts', 'penicillin', 'allergy', 'allergic', 'diabetes', 'asthma', 'hypertension']
-    for term in medical_terms:
-        if term.lower() in query.lower():
-            keywords.append(term)
+    # Extract meaningful words using NLP (nouns, proper nouns, adjectives)
+    for token in doc:
+        if (not token.is_stop and not token.is_punct and len(token.text) > 2 and 
+            token.pos_ in ['NOUN', 'PROPN', 'ADJ'] and token.text.lower() not in [name.lower() for name in patient_names]):
+            keywords.append(token.text)
     
-    # Extract other important entities
+    # Extract named entities
     for ent in doc.ents:
-        if ent.label_ in ["ORG", "GPE", "DATE", "CARDINAL"]:
+        if ent.label_ in ["ORG", "GPE", "DATE", "CARDINAL", "PRODUCT"]:
             keywords.append(ent.text)
     
     print("Keywords detected:", keywords)
@@ -232,6 +201,18 @@ def keyword_search(query, max_hits=5):
 
 def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
     """Dynamic search with patient context awareness."""
+    # Clear patient context for general medical questions FIRST
+    original_patient_names = extract_patient_names(query)
+    pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+    query_words = query.lower().split()
+    has_pronouns = any(pronoun in query_words for pronoun in pronouns)
+    
+    print(f"DEBUG CLEAR: names={original_patient_names}, pronouns={has_pronouns}, session_in_patient={session_id in current_patient}")
+    
+    if not original_patient_names and not has_pronouns and session_id in current_patient:
+        print(f"🔄 Clearing patient context for general query: {query}")
+        del current_patient[session_id]
+    
     # Update patient context and resolve pronouns
     processed_query = update_patient_context(query, session_id)
     
@@ -266,25 +247,32 @@ def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
             seen_texts.add(text_key)
             merged.append(r)
 
-    # Filter by current patient if available
-    current_patient_name = get_patient_context(session_id)
-    if current_patient_name:
-        patient_filtered = []
-        
-        for result in merged:
-            if current_patient_name.lower() in result["text"].lower():
-                patient_filtered.append(result)
-        
-        # If we have patient-specific results, use only those
-        if patient_filtered:
-            merged = patient_filtered
-            print(f"🔹 Using only {len(patient_filtered)} patient-specific results for {current_patient_name}")
-        else:
-            # If no patient-specific results found, return empty list to indicate no data
-            print(f"🔹 No records found for {current_patient_name}")
-            merged = []
+    # Filter by current patient ONLY if the query is patient-specific
+    original_patient_names = extract_patient_names(query)  # Check original query, not processed
+    pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+    has_pronouns = any(pronoun in query.lower() for pronoun in pronouns)
+    
+    # Only filter by patient if the query explicitly mentions patients or uses pronouns
+    if original_patient_names or has_pronouns:
+        current_patient_name = get_patient_context(session_id)
+        if current_patient_name:
+            patient_filtered = []
+            
+            for result in merged:
+                if current_patient_name.lower() in result["text"].lower():
+                    patient_filtered.append(result)
+            
+            # If we have patient-specific results, use only those
+            if patient_filtered:
+                merged = patient_filtered
+                print(f"🔹 Using only {len(patient_filtered)} patient-specific results for {current_patient_name}")
+            else:
+                # If no patient-specific results found, return empty list to indicate no data
+                print(f"🔹 No records found for {current_patient_name}")
+                merged = []
 
     print(f"🔹 Total merged results: {len(merged)}")
+    print(f"👤 Current patient context: {get_patient_context(session_id)}")
     return merged, processed_query
 # -------------------------------
 # Generate Answer with Nova Pro
@@ -334,20 +322,93 @@ def extract_highlight(question, chunk_text):
     print("Extracted highlight:", highlight)
     return highlight.strip()
 
+def is_related_to_previous_context(current_question: str, session_id: str) -> bool:
+    """Check if current question is related to previous conversation."""
+    if session_id not in chat_memory or len(chat_memory[session_id]) == 0:
+        return False
+    
+    # Get last few exchanges
+    recent_history = chat_memory[session_id][-4:]  # Last 2 Q&A pairs
+    history_text = " ".join([msg["content"] for msg in recent_history]).lower()
+    
+    # Extract keywords from current question and history
+    current_doc = nlp(current_question.lower())
+    history_doc = nlp(history_text)
+    
+    # Get meaningful words (nouns, adjectives, medical terms)
+    current_keywords = set()
+    for token in current_doc:
+        if (not token.is_stop and not token.is_punct and len(token.text) > 3 and 
+            token.pos_ in ['NOUN', 'ADJ', 'PROPN']):
+            current_keywords.add(token.lemma_)
+    
+    history_keywords = set()
+    for token in history_doc:
+        if (not token.is_stop and not token.is_punct and len(token.text) > 3 and 
+            token.pos_ in ['NOUN', 'ADJ', 'PROPN']):
+            history_keywords.add(token.lemma_)
+    
+    # Check overlap
+    if len(current_keywords) == 0 or len(history_keywords) == 0:
+        return False
+    
+    overlap = len(current_keywords & history_keywords)
+    overlap_ratio = overlap / min(len(current_keywords), len(history_keywords))
+    
+    # Consider related if >30% keyword overlap AND current question has patient-specific indicators
+    patient_indicators = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'patient']
+    has_patient_indicators = any(indicator in current_question.lower() for indicator in patient_indicators)
+    
+    # Only consider related if there's overlap AND the question seems patient-specific
+    is_related = overlap_ratio > 0.3 and has_patient_indicators
+    print(f"🔗 Context relation check: {overlap_ratio:.2f} overlap, patient_indicators={has_patient_indicators} - {'Related' if is_related else 'Unrelated'}")
+    
+    return is_related
+
 def update_patient_context(question: str, session_id: str) -> str:
     """Update patient context and resolve pronouns."""
     # Extract patient names from current question
     patient_names = extract_patient_names(question)
     
+    # Check if current question is related to previous context
+    if not is_related_to_previous_context(question, session_id):
+        # Clear chat history for unrelated questions
+        if session_id in chat_memory and len(chat_memory[session_id]) > 0:
+            print(f"🔄 Clearing chat history - unrelated topic detected")
+            chat_memory[session_id] = []
+        
+        # Clear patient context for unrelated questions ONLY if no pronouns in current question
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        
+        if not has_pronouns and session_id in current_patient:
+            print(f"🔄 Clearing patient context - unrelated topic")
+            del current_patient[session_id]
+    
     # Update current patient if new name found
     if patient_names:
         current_patient[session_id] = patient_names[0]
         print(f"Updated patient context for session {session_id}: {patient_names[0]}")
-    else:
-        # Clear patient context if no patient names found in new question
-        # This prevents old patient context from interfering with new queries
-        if session_id in current_patient:
-            print(f"Clearing patient context for session {session_id} - no patient names in current query")
+    elif not patient_names:
+        # Check if question has pronouns or patient-specific terms
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+        patient_terms = ['patient', 'this patient', 'the patient']
+        
+        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        has_patient_terms = any(term in question.lower() for term in patient_terms)
+        
+        # Clear patient context for general medical questions
+        if not has_pronouns and not has_patient_terms:
+            if session_id in current_patient:
+                print(f"🔄 Clearing patient context - general query detected")
+                del current_patient[session_id]
+    
+    # Additional check: if question is unrelated AND has no patient names/pronouns, clear patient context
+    if not is_related_to_previous_context(question, session_id):
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        if not patient_names and not has_pronouns and session_id in current_patient:
+            print(f"🔄 Force clearing patient context - unrelated general query")
             del current_patient[session_id]
     
     # Get current patient for this session
@@ -480,16 +541,34 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
     
     # Check if we have any relevant context
     if not contexts or len(contexts) == 0:
-        # Only return error if asking about a specific patient
-        current_patient_name = get_patient_context(session_id)
-        if current_patient_name:
-            return f"No records found for patient '{current_patient_name}'. Please verify the patient name is correct.", [], []
+        # Check if this is a general medical question or patient-specific
+        patient_names_in_question = extract_patient_names(question)
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+        question_words = question.lower().split()
+        has_pronouns = any(pronoun in question_words for pronoun in pronouns)
+        
+        print(f"DEBUG: patient_names_in_question={patient_names_in_question}, has_pronouns={has_pronouns}")
+        
+        # Only return patient-specific error if the question explicitly mentions patients or uses pronouns
+        if patient_names_in_question or has_pronouns:
+            current_patient_name = get_patient_context(session_id)
+            patient_name = current_patient_name or (patient_names_in_question[0] if patient_names_in_question else "unknown patient")
+            return f"No records found for patient '{patient_name}'. Please verify the patient name is correct.", [], []
         else:
-            return "No relevant patient records found for this query.", [], []
+            # For general medical questions, provide general medical information
+            print(f"DEBUG: Generating general medical answer for: {question}")
+            general_answer = generate_general_medical_answer(question)
+            return general_answer, [], []
     
     # Check if asking about specific patient but no patient-specific records found
     current_patient_name = get_patient_context(session_id)
-    if current_patient_name and not any(current_patient_name.lower() in c["text"].lower() for c in contexts):
+    original_patient_names = extract_patient_names(question)
+    pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+    question_words = question.lower().split()
+    has_pronouns = any(pronoun in question_words for pronoun in pronouns)
+    
+    # Only check for patient-specific records if the question is actually about a specific patient
+    if current_patient_name and (original_patient_names or has_pronouns) and not any(current_patient_name.lower() in c["text"].lower() for c in contexts):
         return f"No records found for patient '{current_patient_name}'. Please verify the patient name is correct.", [], []
     
     # --- Get last chat history for this session ---
