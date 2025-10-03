@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask import Response, request, stream_with_context
 import os
 from json_from_s3_file import get_json_from_s3_file, upload_json_to_s3
 from embedding import process_s3_json
@@ -148,53 +149,41 @@ def process():
         print(f"Error during processing: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/ask", methods=["POST"])
-def ask_question():
-    print("=== ask_question called - updated version ===")
-    try:
-        data = request.get_json()
-        if not data or "question" not in data:
-            return jsonify({"error": "Missing 'question' in request body"}), 400
+@app.route("/ask", methods=["GET"])
+def ask_question_stream():
+    q = request.args.get("question", "")
+    session_id = request.args.get("session_id", "default")
 
-        q = data["question"]
-        session_id = data.get("session_id", "default")
+    def generate():
+        try:
+            yield "data: " + json.dumps({"status": "🔍 Retrieving patient record"}) + "\n\n"
+            search_result = hybrid_search(q, session_id=session_id, top_k=5)
+            contexts, processed_query = search_result
 
-        # Get search results
-        search_result = hybrid_search(q, session_id=session_id, top_k=5)
-        print(f"Search result type: {type(search_result)}")
-        print(f"Search result: {search_result}")
-        
-        # Unpack the tuple
-        contexts, processed_query = search_result
-        print(f"Contexts type: {type(contexts)}, length: {len(contexts) if isinstance(contexts, list) else 'N/A'}")
-        
-        # Validate contexts is a list of dictionaries
-        if not isinstance(contexts, list):
-            return jsonify({"error": f"Expected contexts to be a list, got {type(contexts)}"}), 500
-            
-        # Create contexts preview safely
-        contexts_preview = []
-        for i, c in enumerate(contexts):
-            if isinstance(c, dict) and "text" in c:
-                contexts_preview.append({"text": c["text"][:200]})
-            else:
-                print(f"Warning: Context {i} is not a valid dict with 'text' key: {type(c)}")
-        
-        answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_query)
-        print(f"Question: {q}\nAnswer: {answer}")
-        
-        return jsonify({
-            "question": q,
-            "contexts": contexts_preview,
-            "answer": answer.replace("\r\n", "\n").replace("\n", "\n"),
-            "sources": sources,
-            "suggestions": suggestions
-        })
-    except Exception as e:
-        print(f"Error in ask_question: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+            yield "data: " + json.dumps({"status": "📖 Extracting highlights"}) + "\n\n"
+            contexts_preview = []
+            for i, c in enumerate(contexts):
+                if isinstance(c, dict) and "text" in c:
+                    contexts_preview.append({"text": c["text"][:200]})
+
+            yield "data: " + json.dumps({"status": "🤖 Generating answer"}) + "\n\n"
+            answer, sources, suggestions = generate_answer_with_sources(
+                q, contexts, session_id, processed_query
+            )
+
+            payload = {
+                "question": q,
+                "answer": answer,
+                "sources": sources,
+                "suggestions": suggestions
+            }
+            yield "data: " + json.dumps(payload) + "\n\n"
+
+        except Exception as e:
+            yield "data: " + json.dumps({"error": str(e)}) + "\n\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))

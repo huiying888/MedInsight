@@ -49,7 +49,7 @@ export default function Dashboard() {
         });
         return Object.entries(counts).map(([text, value]) => ({
             text: String(text),
-            value: Math.max(Number(value) * 150, 20) // scaled
+            value: Math.max(Number(value) * 100, 20) // scaled
         }));
     }, [patients]);
 
@@ -94,7 +94,7 @@ export default function Dashboard() {
     useEffect(() => {
         async function loadPatients() {
             try {
-                const res = await fetch(S3_URL);
+                const res = await fetch(`${S3_URL}?t=${Date.now()}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 setPatients(Array.isArray(data) ? data : []);
@@ -245,7 +245,7 @@ export default function Dashboard() {
                                     width={400}
                                     height={300}
                                     padding={2}
-                                    fontSizes={[55, 100]}
+                                    fontSizes={[5, 20]}
                                     rotate={resolveRotate}
                                     spiral="rectangular"
                                     colors={COLORS}

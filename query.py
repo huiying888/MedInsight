@@ -115,16 +115,18 @@ def get_embedding(text: str) -> np.ndarray:
 
 
 # -------------------------------
-# Query FAISS
+# Query FAISS (local only)
 # -------------------------------
 def query_faiss(question, k=3):
-    s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
-    s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
+    # Load local FAISS index + metadata
+    if not os.path.exists(INDEX_FILE) or not os.path.exists(META_FILE):
+        raise FileNotFoundError("❌ FAISS index or metadata not found locally. Please build the index first.")
 
     index = faiss.read_index(INDEX_FILE)
     with open(META_FILE, "r") as f:
         metadata = json.load(f)
 
+    # Embed query and search
     query_vec = get_embedding(question).reshape(1, -1)
     D, I = index.search(query_vec, k)
 
@@ -133,7 +135,9 @@ def query_faiss(question, k=3):
         if idx == -1 or idx >= len(metadata):
             continue
         results.append(metadata[idx])
+
     return results
+
 # -------------------------------
 # Keyword + Hybrid Search
 # -------------------------------

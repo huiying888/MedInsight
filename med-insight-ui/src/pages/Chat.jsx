@@ -100,37 +100,37 @@ function highlightTextToHTML(text, highlights = []) {
 
   // Normalize text for comparison
   const normalizeText = (str) => str.toLowerCase().replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  
+
   const normalizedText = normalizeText(text);
-  
+
   // Check if this text item should be highlighted
   const shouldHighlight = highlights.some(highlight => {
     const normalizedHighlight = normalizeText(highlight);
-    
+
     // Exact match
     if (normalizedText === normalizedHighlight) return true;
-    
+
     // For single words, check exact word match
     if (!normalizedHighlight.includes(' ') && !normalizedText.includes(' ')) {
       return normalizedText === normalizedHighlight;
     }
-    
+
     // For phrases, check if text is part of the phrase
     if (normalizedHighlight.includes(' ')) {
       const highlightWords = normalizedHighlight.split(' ');
       const textWords = normalizedText.split(' ');
-      
+
       // Check if all text words are in the highlight phrase
       return textWords.every(word => highlightWords.includes(word));
     }
-    
+
     return false;
   });
 
   if (shouldHighlight) {
     return `<mark style="background-color:yellow">${escapeHtml(text)}</mark>`;
   }
-  
+
   return escapeHtml(text);
 }
 
@@ -155,85 +155,83 @@ export default function Chat() {
   async function sendQuery(queryText) {
     if (!queryText.trim()) return;
 
-    setChatHistory((h) => [...h, { role: "user", content: queryText }]);
+    // Add user message
+    setChatHistory(h => [...h, { role: "user", content: queryText }]);
     setQ("");
-    setLoading(true);
 
-    try {
-      const { data } = await axios.post(API_URL, { question: queryText });
+    const url = `${API_BASE_BACKEND}/ask?question=${encodeURIComponent(queryText)}&session_id=default`;
+    const evtSource = new EventSource(url);
 
-      // Convert S3 URIs (s3://bucket/key) → HTTPS URLs
-      const sources = (data.sources || []).map((s) => {
-        let url = s.url;
-        if (url.startsWith("s3://")) {
-          const [, bucket, ...keyParts] = url.split("/");
-          const key = keyParts.join("/");
-          url = `https://${bucket}.s3.us-east-1.amazonaws.com/${encodeURIComponent(key)}`;
+    evtSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.status) {
+          // 🚀 Replace the temp message with the latest status + animated dots
+          setChatHistory(h => [
+            ...h.filter(m => m.role !== "assistant_temp"),
+            { role: "assistant_temp", content: `${data.status} …` } // you can animate the dots in UI
+          ]);
+        } else if (data.answer) {
+          evtSource.close();
+          // ✅ Replace temp status bubble with final answer
+          setChatHistory(h => [
+            ...h.filter(m => m.role !== "assistant_temp"),
+            {
+              role: "assistant",
+              content: data.answer,
+              sources: data.sources,
+              suggestions: data.suggestions
+            }
+          ]);
+        } else if (data.error) {
+          evtSource.close();
+          setChatHistory(h => [
+            ...h.filter(m => m.role !== "assistant_temp"),
+            { role: "assistant", content: `⚠️ Error: ${data.error}` }
+          ]);
         }
-        return { ...s, url, file: s.file };
-      });
+      } catch (err) {
+        console.error("SSE parse error:", err, event.data);
+      }
+    };
 
-      // ✅ Reset sources for this query only
-      setLatestSources(sources);
-
-      // Save message with sources and suggestions
-      setChatHistory((h) => [
-        ...h,
-        { role: "assistant", content: (data.answer), sources, suggestions: data.suggestions || [] },
-      ]);
-
-      // ✅ Store latest sources for highlighting
-      // setLatestSources(sources);
-    } catch (err) {
-      console.error(err);
-      setChatHistory((h) => [
-        ...h,
-        { role: "assistant", content: "An error occurred. Please try again.", suggestions: [] },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    evtSource.onerror = (err) => {
+      console.error("SSE connection error:", err);
+      evtSource.close();
+      // clear temp bubble if it exists
+      setChatHistory(h => h.filter(m => m.role !== "assistant_temp"));
+    };
   }
+
+
 
   const handleFaqClick = (faqQuery) => sendQuery(faqQuery);
 
   // ✅ Extract highlights from the specific message that contains this PDF source
   const pdfHighlights = useMemo(() => {
     if (!selectedPdf) return [];
-    
+
     console.log('Selected PDF:', selectedPdf);
-    
-    // Find the specific message that contains this PDF source
-    const messageWithThisPdf = [...chatHistory]
-      .reverse()
-      .find(m => {
-        if (m.role !== 'assistant' || !m.sources) return false;
-        return m.sources.some(s => {
-          const urlMatch = s.url === selectedPdf.url || 
-                          (s.file && selectedPdf.url && selectedPdf.url.includes(s.file)) ||
-                          (s.key && selectedPdf.url && selectedPdf.url.includes(s.key));
-          const pageMatch = s.page === selectedPdf.page;
-          return urlMatch && pageMatch;
-        });
-      });
-    
-    if (!messageWithThisPdf) return [];
-    
-    const allSources = messageWithThisPdf.sources;
-    
+
+    // Find all sources from all messages that match the selected PDF
+    const allSources = chatHistory
+      .filter(m => m.role === 'assistant' && m.sources)
+      .flatMap(m => m.sources);
+
     console.log('All sources:', allSources);
-    
+
     // More flexible matching - check file name and page
     const matchingSources = allSources.filter(s => {
-      const urlMatch = s.url === selectedPdf.url || 
-                      (s.file && selectedPdf.url && selectedPdf.url.includes(s.file)) ||
-                      (s.key && selectedPdf.url && selectedPdf.url.includes(s.key));
+      const urlMatch = s.url === selectedPdf.url ||
+        (s.file && selectedPdf.url && selectedPdf.url.includes(s.file)) ||
+        (s.key && selectedPdf.url && selectedPdf.url.includes(s.key));
       const pageMatch = s.page === selectedPdf.page;
       return urlMatch && pageMatch;
     });
-    
+
     console.log('Matching sources:', matchingSources);
-    
+
     const highlights = matchingSources.flatMap((s) => {
       if (!s.highlight) return [];
 
@@ -242,33 +240,33 @@ export default function Chat() {
         : String(s.highlight);
 
       const highlights = [];
-      
+
       // Add the complete string
       highlights.push(highlightStr.trim());
-      
+
       // Add meaningful phrases (2-4 words)
       const words = highlightStr.split(/\s+/);
       for (let i = 0; i < words.length - 1; i++) {
         // 2-word phrases
         const phrase2 = words.slice(i, i + 2).join(' ').trim();
         if (phrase2.length > 5) highlights.push(phrase2);
-        
+
         // 3-word phrases
         if (i < words.length - 2) {
           const phrase3 = words.slice(i, i + 3).join(' ').trim();
           if (phrase3.length > 8) highlights.push(phrase3);
         }
       }
-      
+
       // Add individual meaningful words
       words.forEach(word => {
         const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
         if (cleanWord.length > 3) highlights.push(cleanWord);
       });
-      
+
       return [...new Set(highlights)].filter(h => h && h.length > 3);
     });
-    
+
     console.log('Final highlights:', highlights);
     return highlights;
   }, [selectedPdf, chatHistory]);
@@ -307,85 +305,94 @@ export default function Chat() {
             <div key={i} className={`message-wrapper ${m.role}`}>
               <div className="message-bubble">
                 {m.role === "assistant" ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} linkBreaks>{m.content.replace(/\n/g, "  \n")}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} linkBreaks>
+                    {m.content.replace(/\n/g, "  \n")}
+                  </ReactMarkdown>
+                ) : m.role === "assistant_temp" ? (
+                  // ✅ Show temporary status with animated dots
+                  <span className="typing-dots">{m.content}</span>
                 ) : (
                   m.content
                 )}
 
-                {m.role === "assistant" && (m.sources?.length > 0 || m.suggestions?.length > 0) && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      borderTop: "1px solid #eee",
-                      paddingTop: 8,
-                    }}
-                  >
-                    {m.sources?.length > 0 && (
-                      <>
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
-                        <ol style={{ margin: 0, paddingLeft: 18, marginBottom: 12 }}>
-                          {m.sources.map((s, idx) => (
-                            <li key={idx} style={{ marginBottom: 8 }}>
+                {m.role === "assistant" &&
+                  (m.sources?.length > 0 || m.suggestions?.length > 0) && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        borderTop: "1px solid #eee",
+                        paddingTop: 8,
+                      }}
+                    >
+                      {m.sources?.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Sources</div>
+                          <ol style={{ margin: 0, paddingLeft: 18, marginBottom: 12 }}>
+                            {m.sources.map((s, idx) => (
+                              <li key={idx} style={{ marginBottom: 8 }}>
+                                <button
+                                  className="source-link"
+                                  onClick={() =>
+                                    setSelectedPdf({ url: s.url, page: s.page })
+                                  }
+                                >
+                                  {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+                                </button>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      )}
+
+                      {m.suggestions?.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            💡 Suggested Questions
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "6px",
+                            }}
+                          >
+                            {m.suggestions.map((suggestion, idx) => (
                               <button
-                                className="source-link"
-                                onClick={() => setSelectedPdf({ url: s.url, page: s.page })}
+                                key={idx}
+                                className="suggestion-button"
+                                onClick={() => sendQuery(suggestion)}
+                                style={{
+                                  padding: "8px 12px",
+                                  backgroundColor: "#f0f8ff",
+                                  border: "1px solid #d0e7ff",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  textAlign: "left",
+                                  fontSize: "14px",
+                                  transition: "all 0.2s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.target.style.backgroundColor = "#e6f3ff";
+                                  e.target.style.borderColor = "#b3d9ff";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.backgroundColor = "#f0f8ff";
+                                  e.target.style.borderColor = "#d0e7ff";
+                                }}
                               >
-                                {s.file || s.key} {s.page ? `(p. ${s.page})` : ""}
+                                {suggestion}
                               </button>
-                            </li>
-                          ))}
-                        </ol>
-                      </>
-                    )}
-                    
-                    {m.suggestions?.length > 0 && (
-                      <>
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>💡 Suggested Questions</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {m.suggestions.map((suggestion, idx) => (
-                            <button
-                              key={idx}
-                              className="suggestion-button"
-                              onClick={() => sendQuery(suggestion)}
-                              style={{
-                                padding: '8px 12px',
-                                backgroundColor: '#f0f8ff',
-                                border: '1px solid #d0e7ff',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                fontSize: '14px',
-                                transition: 'all 0.2s ease',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = '#e6f3ff';
-                                e.target.style.borderColor = '#b3d9ff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = '#f0f8ff';
-                                e.target.style.borderColor = '#d0e7ff';
-                              }}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
           ))}
-          {loading && (
-            <div className="message-wrapper assistant">
-              <div className="message-bubble loading-bubble">
-                <div className="loading-dot" />
-                <div className="loading-dot" />
-                <div className="loading-dot" />
-              </div>
-            </div>
-          )}
+
+          {/* ❌ remove old loading box — handled by assistant_temp now */}
           <div ref={messagesEndRef} />
         </div>
 

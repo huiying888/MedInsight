@@ -19,8 +19,13 @@ S3_INPUT_BUCKET = "meddoc-processed"        # input (your JSONs)
 S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metadata)
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-INDEX_FILE = "index.faiss"
-META_FILE = "metadata.json"
+# INDEX_FILE = "index.faiss"
+# META_FILE = "metadata.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # folder where this script lives
+LOCAL_FAISS_DIR = os.path.join(BASE_DIR, "faiss")
+os.makedirs(LOCAL_FAISS_DIR, exist_ok=True)
+INDEX_FILE = os.path.join(LOCAL_FAISS_DIR, "index.faiss")
+META_FILE = os.path.join(LOCAL_FAISS_DIR, "metadata.json")
 
 # -------------------------------
 # Clients
@@ -77,29 +82,26 @@ def get_embedding(text):
 
 
 # -------------------------------
-# Build or update FAISS index
+# Build or update FAISS index (local only)
 # -------------------------------
 def build_or_update_faiss(embeddings, metadata_list):
     with faiss_lock:
         index = None
         existing_metadata = []
 
-        try:
-            s3.download_file(S3_VECTOR_BUCKET, INDEX_FILE, INDEX_FILE)
-            s3.download_file(S3_VECTOR_BUCKET, META_FILE, META_FILE)
-
-            index = faiss.read_index(INDEX_FILE)
-            with open(META_FILE, "r") as f:
-                existing_metadata = json.load(f)
-            print(f"📥 Existing FAISS index loaded with {index.ntotal} vectors")
-
-        except ClientError as e:
-            if e.response["Error"]["Code"] in ["NoSuchKey", "404"]:
-                print("⚠️ No existing FAISS index found in S3. A new one will be created.")
+        # Try load existing FAISS index from local disk
+        if os.path.exists(INDEX_FILE) and os.path.exists(META_FILE):
+            try:
+                index = faiss.read_index(INDEX_FILE)
+                with open(META_FILE, "r") as f:
+                    existing_metadata = json.load(f)
+                print(f"📥 Existing FAISS index loaded with {index.ntotal} vectors")
+            except Exception as e:
+                print(f"⚠️ Failed to load existing FAISS index: {e}")
                 index = None
                 existing_metadata = []
-            else:
-                raise
+        else:
+            print("⚠️ No existing FAISS index found locally. A new one will be created.")
 
         # Deduplicate based on (file, chunk_id)
         existing_keys = {(m["file"], m["chunk_id"]) for m in existing_metadata}
@@ -131,12 +133,9 @@ def build_or_update_faiss(embeddings, metadata_list):
         faiss.write_index(index, INDEX_FILE)
         with open(META_FILE, "w") as f:
             json.dump(all_metadata, f)
-
-        # Upload back to S3
-        s3.upload_file(INDEX_FILE, S3_VECTOR_BUCKET, INDEX_FILE)
-        s3.upload_file(META_FILE, S3_VECTOR_BUCKET, META_FILE)
+        print(f"💾 FAISS index saved at: {os.path.abspath(INDEX_FILE)}")
+        print(f"💾 Metadata saved at: {os.path.abspath(META_FILE)}")
         print(f"🎉 FAISS index updated with {len(new_metadata)} new chunks. Total vectors: {index.ntotal}")
-
 
 # -------------------------------
 # Process JSON from S3
