@@ -23,8 +23,8 @@ S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metada
 SOURCE_BUCKET = os.getenv("SOURCE_BUCKET", "meddoc-raw")
 SOURCE_REGION = os.getenv("SOURCE_REGION", os.getenv("AWS_REGION", "us-east-1"))
 
-INDEX_FILE = "index.faiss"
-META_FILE = "metadata.json"
+INDEX_FILE = r"faiss/index.faiss"
+META_FILE = r"faiss/metadata.json"
 
 # -------------------------------
 # Clients
@@ -145,20 +145,26 @@ def query_faiss(question, k=3):
 nlp = spacy.load("en_core_web_sm")
 
 def extract_patient_names(query):
-    """Extract patient names using NLP entity recognition only."""
+    """Extract patient names using NLP entity recognition with fallback."""
     doc = nlp(query)
     names = []
     
-    # Use only NLP's PERSON entity recognition
+    # First, use NLP's PERSON entity recognition
     for ent in doc.ents:
         if ent.label_ == "PERSON":
-            # Additional validation: check if it's actually a person name
-            name = ent.text.strip()
-            # Remove possessive 's from names
-            name = name.rstrip("'s")
-            # Skip single words that are likely medical terms
-            if len(name.split()) >= 2 or name[0].isupper():
-                names.append(name)
+            name = ent.text.strip().rstrip("'s")
+            names.append(name)
+    
+    # Fallback: if no PERSON entities found, look for consecutive proper nouns
+    if not names:
+        proper_nouns = []
+        for token in doc:
+            if token.pos_ == 'PROPN' and not token.is_stop:
+                proper_nouns.append(token.text)
+        
+        # If we have 1-3 consecutive proper nouns, treat as potential name
+        if 1 <= len(proper_nouns) <= 3:
+            names.append(" ".join(proper_nouns))
     
     # Remove duplicates while preserving order
     unique_names = []
@@ -318,7 +324,7 @@ def extract_highlight(question, chunk_text):
         modelId=LLM_MODEL,
         body=json.dumps({
             "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": 128, "temperature": 0.0}
+            "inferenceConfig": {"maxTokens": 64, "temperature": 0.0}
         })
     )
     resp_body = json.loads(response["body"].read())
@@ -352,19 +358,21 @@ def is_related_to_previous_context(current_question: str, session_id: str) -> bo
             token.pos_ in ['NOUN', 'ADJ', 'PROPN']):
             history_keywords.add(token.lemma_)
     
-    # Check overlap
+    # Check patient indicators first
+    patient_indicators = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'patient', 'it', 'this', 'that','its']
+    question_words = current_question.lower().split()
+    has_patient_indicators = any(indicator in question_words for indicator in patient_indicators)
+    
+    # If no keywords found, rely on patient indicators
     if len(current_keywords) == 0 or len(history_keywords) == 0:
-        return False
-    
-    overlap = len(current_keywords & history_keywords)
-    overlap_ratio = overlap / min(len(current_keywords), len(history_keywords))
-    
-    # Consider related if >30% keyword overlap AND current question has patient-specific indicators
-    patient_indicators = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'patient']
-    has_patient_indicators = any(indicator in current_question.lower() for indicator in patient_indicators)
-    
-    # Only consider related if there's overlap AND the question seems patient-specific
-    is_related = overlap_ratio > 0.3 and has_patient_indicators
+        is_related = has_patient_indicators
+        overlap_ratio = 0.0
+    else:
+        # Check overlap when keywords are available
+        overlap = len(current_keywords & history_keywords)
+        overlap_ratio = overlap / min(len(current_keywords), len(history_keywords))
+        # Consider related if there's significant overlap OR if it has patient indicators (like pronouns)
+        is_related = overlap_ratio > 0.3 or has_patient_indicators
     print(f"🔗 Context relation check: {overlap_ratio:.2f} overlap, patient_indicators={has_patient_indicators} - {'Related' if is_related else 'Unrelated'}")
     
     return is_related
@@ -382,8 +390,9 @@ def update_patient_context(question: str, session_id: str) -> str:
             chat_memory[session_id] = []
         
         # Clear patient context for unrelated questions ONLY if no pronouns in current question
-        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
-        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'it', 'this', 'that']
+        question_words = question.lower().split()
+        has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         
         if not has_pronouns and session_id in current_patient:
             print(f"🔄 Clearing patient context - unrelated topic")
@@ -395,10 +404,11 @@ def update_patient_context(question: str, session_id: str) -> str:
         print(f"Updated patient context for session {session_id}: {patient_names[0]}")
     elif not patient_names:
         # Check if question has pronouns or patient-specific terms
-        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'it', 'this', 'that']
         patient_terms = ['patient', 'this patient', 'the patient']
         
-        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        question_words = question.lower().split()
+        has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         has_patient_terms = any(term in question.lower() for term in patient_terms)
         
         # Clear patient context for general medical questions
@@ -409,8 +419,9 @@ def update_patient_context(question: str, session_id: str) -> str:
     
     # Additional check: if question is unrelated AND has no patient names/pronouns, clear patient context
     if not is_related_to_previous_context(question, session_id):
-        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
-        has_pronouns = any(pronoun in question.lower() for pronoun in pronouns)
+        pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'it', 'this', 'that']
+        question_words = question.lower().split()
+        has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         if not patient_names and not has_pronouns and session_id in current_patient:
             print(f"🔄 Force clearing patient context - unrelated general query")
             del current_patient[session_id]
@@ -418,8 +429,9 @@ def update_patient_context(question: str, session_id: str) -> str:
     # Get current patient for this session
     patient = current_patient.get(session_id)
     
+    # Resolve pronouns based on context
     if patient:
-        # Comprehensive pronoun resolution
+        # Patient-specific pronoun resolution
         pronoun_patterns = [
             (r"\bhis\b", f"{patient}'s"),
             (r"\bher\b", f"{patient}'s"),
@@ -436,6 +448,49 @@ def update_patient_context(question: str, session_id: str) -> str:
         for pattern, replacement in pronoun_patterns:
             question = re.sub(pattern, replacement, question, flags=re.IGNORECASE)
     
+    # Resolve 'it' based on main topic from most recent chat
+    if 'it' in question.lower().split():
+        if session_id in chat_memory and len(chat_memory[session_id]) > 0:
+            # Get the last user message
+            last_user_msg = None
+            for msg in reversed(chat_memory[session_id]):
+                if msg['role'] == 'user':
+                    last_user_msg = msg['content']
+                    break
+            
+            if last_user_msg:
+                # Extract nouns from the last user message, prioritizing medical conditions
+                doc = nlp(last_user_msg.lower())
+                nouns = []
+                for token in doc:
+                    if (token.pos_ in ['NOUN', 'PROPN'] and len(token.text) > 3 and 
+                        not token.is_stop and not token.is_punct):
+                        nouns.append(token.text)
+                
+                # Prioritize medical conditions over general terms like 'symptoms'
+                medical_terms = ['fever', 'pain', 'infection', 'disease', 'condition', 'illness']
+                main_topic = None
+                
+                # First look for medical conditions
+                for noun in nouns:
+                    if any(med_term in noun for med_term in medical_terms) or noun in medical_terms:
+                        main_topic = noun
+                        break
+                
+                # If no medical condition found, use the last meaningful noun (not 'symptoms')
+                if not main_topic:
+                    for noun in reversed(nouns):
+                        if noun != 'symptoms':
+                            main_topic = noun
+                            break
+                
+                # Fallback to first noun if nothing else found
+                if not main_topic and nouns:
+                    main_topic = nouns[0]
+                
+                if main_topic:
+                    question = re.sub(r"\bit\b", main_topic, question, flags=re.IGNORECASE)
+    
     return question
 
 def get_patient_context(session_id: str) -> Optional[str]:
@@ -443,29 +498,36 @@ def get_patient_context(session_id: str) -> Optional[str]:
     return current_patient.get(session_id)
 
 
+def generate_general_medical_answer(question):
+    """Generate general medical information when no specific records are found."""
+    prompt = f"""Provide a brief, general medical answer to this question based on common medical knowledge. Keep the response concise and factual.
+
+Question: {question}
+
+Answer:"""
+    
+    try:
+        response = bedrock.invoke_model(
+            modelId=LLM_MODEL,
+            body=json.dumps({
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                "inferenceConfig": {"maxTokens": 300, "temperature": 0.3, "topP": 0.8}
+            })
+        )
+        resp_body = json.loads(response["body"].read())
+        return resp_body["output"]["message"]["content"][0]["text"]
+    except Exception as e:
+        print(f"Error generating general answer: {e}")
+        return "I'm unable to provide information on this topic. Please consult with a healthcare professional."
+
 def generate_query_suggestions(session_id="default", contexts=None):
-    """Generate 4 relevant follow-up questions based on patient context and conversation history."""
-    current_patient_name = get_patient_context(session_id)
-    memory_context = get_memory_context(session_id, max_turns=3)
+    """Generate 4 relevant follow-up questions based on current chat topic."""
+    memory_context = get_memory_context(session_id, max_turns=2)
     
-    # Only use valid patient names (not processed queries)
-    valid_patient = None
-    if current_patient_name and len(current_patient_name.split()) <= 4 and not any(word in current_patient_name.lower() for word in ['allergy', 'has', 'to', 'penicillin']):
-        valid_patient = current_patient_name
+    if not memory_context:
+        return ["What are common symptoms?", "How is this treated?", "What causes this condition?", "Are there any complications?"]
     
-    # Build context for suggestions - focus on general medical topics from conversation
-    recent_topics = []
-    if memory_context:
-        # Extract medical topics from recent conversation
-        if 'allergy' in memory_context.lower():
-            recent_topics.append('allergies')
-        if 'penicillin' in memory_context.lower():
-            recent_topics.append('antibiotic allergies')
-    
-    topic_context = f"Recent topics discussed: {', '.join(recent_topics)}" if recent_topics else "General medical inquiry"
-    patient_info = f"Current patient: {valid_patient}" if valid_patient else "Multiple patients discussed"
-    
-    # Get the last question to avoid repeating it
+    # Get the last user question to identify the main topic
     last_question = ""
     if memory_context:
         lines = memory_context.split('\n')
@@ -474,69 +536,42 @@ def generate_query_suggestions(session_id="default", contexts=None):
                 last_question = line.replace('User:', '').strip()
                 break
     
-    prompt = f"""Generate 4 NEW and DIFFERENT medical follow-up questions based on the conversation context. Do NOT repeat the question that was just asked. Focus on related but different medical topics.
+    # Extract main medical topic from the question
+    main_topic = "this condition"
+    if last_question:
+        doc = nlp(last_question.lower())
+        for token in doc:
+            if token.pos_ in ['NOUN', 'PROPN'] and len(token.text) > 3 and not token.is_stop:
+                main_topic = token.text
+                break
+    
+    prompt = f"""Generate 4 specific follow-up questions about {main_topic}. Focus on practical medical information.
 
-{patient_info}
-{topic_context}
+Last question was about: {last_question}
 
-Last question asked: {last_question}
-
-Generate 4 DIFFERENT follow-up questions (one per line, no numbering):"""
+Generate 4 different follow-up questions about {main_topic} (one per line, no numbering):"""
 
     try:
         response = bedrock.invoke_model(
             modelId=LLM_MODEL,
             body=json.dumps({
                 "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"maxTokens": 200, "temperature": 0.7, "topP": 0.9}
+                "inferenceConfig": {"maxTokens": 120, "temperature": 0.5, "topP": 0.7}
             })
         )
         resp_body = json.loads(response["body"].read())
         suggestions_text = resp_body["output"]["message"]["content"][0]["text"]
         
-        # Parse and clean suggestions
         suggestions = []
         for line in suggestions_text.split('\n'):
             line = line.strip()
-            if line and not line.startswith('-') and '?' in line:
-                # Remove any specific patient names that might be hallucinated
-                line = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', 'the patient', line)
-                
-                # Skip if too similar to the last question
-                if last_question and len(set(line.lower().split()) & set(last_question.lower().split())) > 3:
-                    continue
-                    
+            if line and '?' in line and not line.startswith('-'):
                 suggestions.append(line)
         
-        # Take first 4 unique suggestions
-        unique_suggestions = []
-        for s in suggestions:
-            if s not in unique_suggestions:
-                unique_suggestions.append(s)
-        suggestions = unique_suggestions[:4]
-        
-        # If we don't have 4, add generic ones
-        while len(suggestions) < 4:
-            generic = [
-                "What are the latest test results?",
-                "Show me the medication history",
-                "What are the vital signs trends?",
-                "Are there any recent diagnoses?"
-            ]
-            for g in generic:
-                if g not in suggestions:
-                    suggestions.append(g)
-                    break
-        
-        return suggestions[:4]
+        return suggestions[:4] if len(suggestions) >= 4 else suggestions + [f"How to treat {main_topic}?", f"What causes {main_topic}?"][:4-len(suggestions)]
     except Exception as e:
         print(f"Error generating suggestions: {e}")
-        return [
-            "What are the latest test results?",
-            "Show me the medication history", 
-            "What are the vital signs trends?",
-            "Are there any recent diagnoses?"
-        ]
+        return [f"How to treat {main_topic}?", f"What causes {main_topic}?", f"How long does {main_topic} last?", "When to see a doctor?"]
 
 def generate_answer_with_sources(question, contexts, session_id="default", processed_query=None):
     # Use processed query if available, otherwise process the question
@@ -562,7 +597,7 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
             # For general medical questions, provide general medical information
             print(f"DEBUG: Generating general medical answer for: {question}")
             general_answer = generate_general_medical_answer(question)
-            return general_answer, [], []
+            return f"This information is not available in our knowledge base. {general_answer}", [], []
     
     # Check if asking about specific patient but no patient-specific records found
     current_patient_name = get_patient_context(session_id)
@@ -588,11 +623,10 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
 Use the following patient records, knowledge base, guidelines and the conversation history
 to answer the question clearly and accurately. 
 
-IMPORTANT: Carefully review ALL patient records provided in the context. Make sure to identify ALL patients that match the criteria in the question.
-
-1. FIRST: Check if the answer to the question can be found in the provided knowledge base and patient records.
-2. IF NOT FOUND: Start your response with "This information is not available in our knowledge base." then provide general medical information
-If the answer is not in the records, say so.{patient_context}
+IMPORTANT: 
+- If the provided context contains sufficient information to fully answer the question, use it directly
+- If the context contains only partial or insufficient information to answer the question, start with "This information is not available in our knowledge base." then provide general medical information
+- Always be honest about what information is available in the provided context{patient_context}
 
 Conversation History:
 {memory_context}
@@ -603,14 +637,14 @@ Context:
 Original Question: {question}
 Processed Question: {processed_query}
 
-Answer (make sure to include ALL relevant patients from the context):"""
+Answer:"""
 
     # --- Call LLM ---
     response = bedrock.invoke_model(
         modelId=LLM_MODEL,
         body=json.dumps({
             "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": 1500, "temperature": 0.2, "topP": 0.9}
+            "inferenceConfig": {"maxTokens": 1000, "temperature": 0.2, "topP": 0.9}
         })
     )
     resp_body = json.loads(response["body"].read())
@@ -623,11 +657,31 @@ Answer (make sure to include ALL relevant patients from the context):"""
     # --- Extract sources + highlights using processed query ---
     sources = []
     seen = {}
-    for c in contexts:
+    valid_highlights_found = False
+    
+    # Determine how many contexts to process based on query type
+    patient_names_in_question = extract_patient_names(question)
+    pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
+    question_words = question.lower().split()
+    has_pronouns = any(pronoun in question_words for pronoun in pronouns)
+    
+    # For patient-specific queries, process more contexts; for general queries, limit to 5
+    if patient_names_in_question or has_pronouns or current_patient_name:
+        max_contexts = min(15, len(contexts))  # Process up to 15 for patient queries
+    else:
+        max_contexts = min(5, len(contexts))   # Limit to 5 for general queries
+    
+    top_contexts = contexts[:max_contexts]
+    
+    for c in top_contexts:
         hl = extract_highlight(processed_query, c["text"]) or ""
         norm = hl.strip().lower()
-        if not norm or "n/a" in norm:
+        
+        # Skip if no highlight or N/A
+        if not norm or "n/a" in norm or "does not contain" in norm:
             continue
+            
+        valid_highlights_found = True
 
         raw = c.get("source") or c.get("s3_key") or c.get("file") or ""
         key = normalize_s3_key(raw)
@@ -652,12 +706,17 @@ Answer (make sure to include ALL relevant patients from the context):"""
                 "highlight": set()
             }
 
-        if hl.strip():
+        if hl.strip() and "n/a" not in hl.lower() and "does not contain" not in hl.lower():
             seen[dedup_key]["highlight"].add(hl.strip())
 
     for entry in seen.values():
         entry["highlight"] = list(entry["highlight"])
         sources.append(entry)
+        
+    # If no valid highlights found, add disclaimer to answer
+    if not valid_highlights_found and not answer.startswith("This information is not available"):
+        general_answer = generate_general_medical_answer(question)
+        answer = f"This information is not available in our knowledge base. {general_answer}"
 
     # --- Generate suggestions ---
     suggestions = generate_query_suggestions(session_id, contexts)
