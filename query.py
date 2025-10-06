@@ -748,15 +748,15 @@ if __name__ == "__main__":
 
         answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_q)
 
-        print("\nNova Pro Answer:\n", answer)
-        print("\nSources:")
-        for s in sources:
-            print(f"- {s['key']} (Page {s['page']})")
-            print(f" Highlight: {s['highlight']}\n")
+        #print("\nNova Pro Answer:\n", answer)
+        #print("\nSources:")
+        # for s in sources:
+        #     print(f"- {s['key']} (Page {s['page']})")
+        #     print(f" Highlight: {s['highlight']}\n")
         
-        print("\nSuggested Questions:")
-        for i, suggestion in enumerate(suggestions, 1):
-            print(f"{i}. {suggestion}")
+        # print("\nSuggested Questions:")
+        # for i, suggestion in enumerate(suggestions, 1):
+        #     print(f"{i}. {suggestion}")
         
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
