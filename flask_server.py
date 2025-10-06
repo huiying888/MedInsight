@@ -14,6 +14,25 @@ from waitress import serve
 app = Flask(__name__)
 CORS(app)
 
+import builtins
+
+# Save the original print
+original_print = print
+
+def safe_print(*args, **kwargs):
+    new_args = []
+    for arg in args:
+        # Convert to str and remove characters that can't encode in cp1252
+        if isinstance(arg, str):
+            safe_arg = arg.encode('cp1252', errors='ignore').decode('cp1252')
+        else:
+            safe_arg = str(arg)
+        new_args.append(safe_arg)
+    original_print(*new_args, **kwargs)
+
+# Override built-in print
+builtins.print = safe_print
+
 REGION = os.getenv("AWS_REGION", "us-east-1")
 PROCESSED_BUCKET = os.getenv("PROCESSED_BUCKET", "meddoc-processed")   # processed bucket
 LLM_MODEL = os.getenv("LLM_MODEL", "amazon.nova-pro-v1:0")             # same model as query.py
