@@ -69,5 +69,5 @@ app.get(/.*/, (req, res) => {
 });
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
-  console.log(`Server running on http://54.234.246.234:${PORT}`)
+  console.log(`Server running on http://54.198.86.26:${PORT}`)
 );
