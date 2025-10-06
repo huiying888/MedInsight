@@ -9,6 +9,7 @@ from flask_cors import CORS
 from extract_structured import parse_chunks, get_chunks_from_s3_file, upload_structured_to_s3
 import json, re
 from botocore.exceptions import ClientError
+from waitress import serve
 
 app = Flask(__name__)
 CORS(app)
@@ -186,5 +187,4 @@ def ask_question_stream():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 3000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    serve(app, host="0.0.0.0", port=3000)

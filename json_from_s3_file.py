@@ -226,6 +226,11 @@ def get_json_from_s3_file(s3_folder, s3_file):
                     Body=f,
                     ContentType="application/pdf"
                 )
+                s3.delete_object(
+                    Bucket=RAW_BUCKET,
+                    Key=f"{s3_folder}/{s3_file}"
+                )
+                                
         # if pdf, copy to target_file to be processed
         else:
             if not os.path.exists(target_file):
@@ -331,8 +336,8 @@ def upload_json_to_s3(json_data, folder, file_name):
 # -------------------------------
 
 if __name__ == "__main__":
-    folder = "knowledge"
-    file = "LAB SESSION 09 - IDS and Honeynet.docx"
+    folder = "guidelines"
+    file = "screenshot_1.jpg"
     json_data = get_json_from_s3_file(folder, file)
     s3_path = upload_json_to_s3(json_data, folder, file)
 
