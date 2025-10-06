@@ -11,9 +11,8 @@ export default function About() {
         </div>
         <h1>About MedInsight</h1>
         <p className="about-lead">
-          MedInsight is an AI-powered medical document query tool that lets healthcare
-          teams ask natural-language questions and instantly find answers inside large
-          collections of PDFs—guidelines, reports, and scanned documents.
+          MedInsight lets healthcare teams query unstructured medical documents through a chat-like interface.
+          We extract, chunk, and index content so you can ask questions and get cited answers in seconds.
         </p>
       </section>
 
@@ -21,7 +20,7 @@ export default function About() {
       <section className="about-body">
         <h3>What it does</h3>
         <ul className="about-list">
-          <li>Smart search across PDFs (including scanned/legacy docs with OCR).</li>
+          <li>Smart search across documents (including scanned/legacy docs with OCR).</li>
           <li>Understands structure like tables, headings, and sections.</li>
           <li>Chat-like interface that returns concise answers with source citations.</li>
         </ul>
@@ -35,8 +34,8 @@ export default function About() {
 
         <div className="about-cta">
           <Link to="/chat" className="cta-primary">Try the Chat</Link>
-          <Link to="/upload" className="cta-secondary">Upload PDFs</Link>
-          <Link to="/docs" className="cta-tertiary">Browse Documents</Link>
+          <Link to="/upload" className="cta-secondary">Upload Docs</Link>
+          <Link to="/docs" className="cta-tertiary">Browse Docs</Link>
         </div>
       </section>
     </div>

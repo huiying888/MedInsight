@@ -150,7 +150,7 @@ export default function Dashboard() {
                                     cy="50%"
                                     outerRadius={100}
                                     dataKey="value"
-                                    label
+                                    label={{ fill: 'var(--text)' }}  // ensures labels visible
                                 >
                                     {genderData.map((entry, i) => (
                                         <Cell
@@ -159,7 +159,17 @@ export default function Dashboard() {
                                         />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: 'var(--card-bg)',
+                                        border: '1px solid var(--card-border)',
+                                        color: 'var(--text)',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                                    }}
+                                    itemStyle={{ color: 'var(--text)' }}
+                                    labelStyle={{ color: 'var(--text-strong)' }}
+                                />
+                                <Legend wrapperStyle={{ color: 'var(--text)' }} />
                             </PieChart>
                         </div>
                     )}
@@ -170,10 +180,13 @@ export default function Dashboard() {
                             <h3>Age Distribution</h3>
                             <BarChart width={400} height={300} data={ageData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="age" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
+                                <XAxis dataKey="age" tick={{ fill: 'var(--text)' }} />
+                                <YAxis tick={{ fill: 'var(--text)' }} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)' }}
+                                    labelStyle={{ color: 'var(--text-strong)' }}
+                                />
+                                <Legend wrapperStyle={{ color: 'var(--text)' }} />
                                 <Bar dataKey="patients" fill="#8884d8" />
                             </BarChart>
                         </div>
@@ -194,12 +207,14 @@ export default function Dashboard() {
                                     dataKey="doctor"
                                     angle={-35}
                                     textAnchor="end"
-                                    interval={0}
-                                    tick={{ fontSize: 12, dy: 10 }}
+                                    tick={{ fill: 'var(--text)' }}
                                 />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend verticalAlign="top" height={36} />
+                                <YAxis tick={{ fill: 'var(--text)' }} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)' }}
+                                    labelStyle={{ color: 'var(--text-strong)' }}
+                                />
+                                <Legend wrapperStyle={{ color: 'var(--text)' }} verticalAlign="top" height={36} />
                                 <Bar dataKey="records" fill="#82ca9d" />
                             </BarChart>
                         </div>
@@ -220,17 +235,15 @@ export default function Dashboard() {
                                     dataKey="date"
                                     angle={-35}
                                     textAnchor="end"
-                                    tick={{ fontSize: 12 }}
+                                    tick={{ fill: 'var(--text)', fontSize: 12 }}
                                 />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend verticalAlign="top" height={36} />
-                                <Line
-                                    type="monotone"
-                                    dataKey="records"
-                                    stroke="#8884d8"
-                                    activeDot={{ r: 8 }}
+                                <YAxis tick={{ fill: 'var(--text)' }} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)' }}
+                                    labelStyle={{ color: 'var(--text-strong)' }}
                                 />
+                                <Legend wrapperStyle={{ color: 'var(--text)' }} verticalAlign="top" height={36} />
+                                <Line type="monotone" dataKey="records" stroke="#8884d8" />
                             </LineChart>
                         </div>
                     )}
@@ -268,11 +281,14 @@ export default function Dashboard() {
                                 margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="name" type="category" width={170} />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="count" fill="#e26d6d" />
+                                <XAxis type="number" tick={{ fill: 'var(--text)' }} />
+                                <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text)' }} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)' }}
+                                    labelStyle={{ color: 'var(--text-strong)' }}
+                                />
+                                <Legend wrapperStyle={{ color: 'var(--text)' }} />
+                                <Bar dataKey="count" fill="#ffc658" />
                             </BarChart>
                         </div>
                     )}

@@ -46,7 +46,7 @@ export default function Home() {
             ) : (
               <>
                 <Link className="cta-primary" to="/chat">Start asking</Link>
-                <Link className="cta-secondary" to="/upload">Upload PDFs</Link>
+                <Link className="cta-secondary" to="/upload">Upload Docs</Link>
                 <Link className="cta-tertiary" to="/docs">Browse bucket</Link>
               </>
             )}
@@ -56,7 +56,7 @@ export default function Home() {
           <div className="trust-row">
             <div className="trust-item">🔒 Privacy-first (S3 + least-privilege)</div>
             <div className="dot">•</div>
-            <div className="trust-item">📄 OCR-ready (scanned PDFs supported)</div>
+            <div className="trust-item">📄 OCR-ready (scanned documents supported)</div>
             <div className="dot">•</div>
             <div className="trust-item">💸 Credit-friendly (batching & caching)</div>
           </div>
@@ -68,7 +68,7 @@ export default function Home() {
               <div className="stat-label">Faster lookups</div>
             </div>
             <div className="stat-card">
-              <div className="stat-num">0 PDF</div>
+              <div className="stat-num">0 Docs</div>
               <div className="stat-label">Left unsearchable</div>
             </div>
             <div className="stat-card">
@@ -114,7 +114,7 @@ export default function Home() {
             <div className="hiw-icon" aria-hidden>📤</div>
             <h3>Upload</h3>
             <p>
-              Drop PDFs into your S3 bucket or use the <strong>Upload</strong> page.
+              Drop documents into your S3 bucket or use the <strong>Upload</strong> page.
               Scans and legacy docs are supported.
             </p>
             <div className="hiw-meta">
@@ -134,7 +134,7 @@ export default function Home() {
               for fast, low-cost retrieval.
             </p>
             <ul className="hiw-list">
-              <li>OCR for scanned PDFs</li>
+              <li>OCR for scanned documents</li>
               <li>Understands tables & figures</li>
               <li>Batching to save credits</li>
             </ul>
@@ -166,12 +166,12 @@ export default function Home() {
           <p>Yes. Documents live in your S3 bucket. Access follows least-privilege IAM and never leaves your AWS account during processing.</p>
         </details>
         <details className="faq-item">
-          <summary>Does it work with scanned PDFs?</summary>
+          <summary>Does it work with scanned documents?</summary>
           <p>Absolutely. Our OCR stage extracts text from scanned/legacy documents so they become searchable.</p>
         </details>
         <details className="faq-item">
           <summary>What about costs?</summary>
-          <p>We batch operations, cache results, and limit calls to stay within tight credits—ideal for hackathons and pilots.</p>
+          <p>We batch operations, cache results, and limit calls to stay within tight credits.</p>
         </details>
       </section>
 

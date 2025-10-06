@@ -1795,3 +1795,57 @@ html[data-theme="dark"] .cta-tertiary:hover {
   font-size: 1.2rem;          /* optional: bigger font */
   color: #555;               /* optional: softer text */
 }
+
+/* === Dark-mode fixes tied to your current theme switch === */
+html[data-theme="dark"] .center-msg {
+  color: var(--text) !important;          /* fix "Loading patients…" */
+}
+
+/* Tabs ("Analytics" / "Patients Overview") */
+html[data-theme="dark"] .tabs .tab {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  color: var(--text) !important;          /* <-- visible label */
+}
+html[data-theme="dark"] .tabs .tab:hover {
+  background: color-mix(in srgb, var(--card-bg) 85%, #fff 15%) !important;
+}
+
+/* --- Active tab/button = pink with white text --- */
+html[data-theme="dark"] .tabs .tab.active {
+  background: #e26d6d !important;   /* bright pink */
+  color: #fff !important;           /* white text */
+  border-color: #e26d6d !important;
+}
+
+html[data-theme="dark"] .tabs .tab.active:hover {
+  background: #f07c7c !important;
+}
+
+/* Cards & containers used on the dashboard */
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .dashboard-container,
+html[data-theme="dark"] .dashboard-kpi {
+  color: var(--text) !important;
+}
+
+/* Recharts: axes, ticks, legend, grid, tooltip */
+html[data-theme="dark"] .recharts-text,
+html[data-theme="dark"] .recharts-cartesian-axis-tick-value,
+html[data-theme="dark"] .recharts-legend-item-text {
+  fill: var(--text) !important;
+  color: var(--text) !important;
+}
+html[data-theme="dark"] .recharts-cartesian-axis-line,
+html[data-theme="dark"] .recharts-cartesian-axis-tick-line {
+  stroke: rgba(231, 233, 238, 0.5) !important;
+}
+html[data-theme="dark"] .recharts-cartesian-grid line {
+  stroke: rgba(231, 233, 238, 0.15) !important;
+}
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  color: var(--text) !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4) !important;
+}

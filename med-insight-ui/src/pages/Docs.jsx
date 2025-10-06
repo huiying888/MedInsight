@@ -96,7 +96,7 @@ export default function Docs() {
   const defaultPrefixPref = localStorage.getItem(LS.defaultPrefix) || "";
   const rowsPerPage = Math.max(1, Math.min(500, Number(localStorage.getItem(LS.itemsPerPage) || 50)));
   const showSizes = (localStorage.getItem(LS.showSizes) || "true") === "true";
-
+  const [numPages, setNumPages] = useState(null);
   const initialPrefix = rememberLast
     ? localStorage.getItem(LS.lastPrefix) ?? defaultPrefixPref ?? ""
     : defaultPrefixPref ?? "";
@@ -607,23 +607,54 @@ export default function Docs() {
                   borderRadius: 8,
                 }}
               >
-                <Document file={drawerFile.url} onLoadError={console.error}>
-                  <Page pageNumber={1} renderTextLayer={true} renderAnnotationLayer={false} scale={0.85} />
+                <Document
+                  file={drawerFile.url}
+                  onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                  onLoadError={console.error}
+                >
+                  {Array.from({ length: numPages || 0 }, (_, index) => (
+                    <div
+                      key={`page_${index + 1}`}
+                      style={{
+                        width: "90%",
+                        margin: "0 auto 24px",
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Page
+                        pageNumber={index + 1}
+                        renderTextLayer={true}
+                        renderAnnotationLayer={false}
+                        width={400} // number only!
+                      />
+                    </div>
+                  ))}
                 </Document>
+
               </div>
 
               {/* AI Summary (scrollable) */}
               <div
                 className="right-summary"
                 style={{
-                  overflow: "auto",
-                  background: "#fff",
-                  border: "1px solid #cfcfd6",
-                  borderRadius: 8,
-                  padding: "10px 12px",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--card-border)",
+                  borderRadius: 12,
+                  display: "grid",
+                  gridTemplateRows: "42px 1fr",
+                  overflow: "hidden"
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: "#2a2930" }}>
+                <div
+                  className="right-summary-header"
+                  style={{
+                    background: "var(--table-head)",
+                    padding: "10px 12px",
+                    fontWeight: 600,
+                    color: "var(--text-strong)"
+                  }}
+                >
                   AI Summary
                 </div>
 
@@ -638,9 +669,20 @@ export default function Docs() {
                 {!drawerLoading && drawerError && <div className="mi-error">{drawerError}</div>}
 
                 {!drawerLoading && !drawerError && (
-                  <div style={{ margin: 0, lineHeight: 1.5, fontSize: 13.5, whiteSpace: "pre-wrap" }}>
+                  <div
+                    style={{
+                      maxHeight: 200,            // 👈 adjust height as you like (e.g. 180, 250)
+                      overflowY: 'auto',         // enables vertical scroll
+                      paddingRight: 8,           // adds space so scrollbar doesn’t overlap text
+                      lineHeight: 1.5,
+                      fontSize: 13.5,
+                      whiteSpace: 'pre-wrap',
+                      margin: 0,
+                    }}
+                  >
                     {shortSummary || "Summary will appear here once available."}
                   </div>
+
                 )}
               </div>
             </div>
