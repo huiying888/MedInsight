@@ -53,8 +53,8 @@ def _load_chunks_text(folder: str, base_json_name: str, cap_chars=12000, max_chu
 
 def _summarize_with_nova(context: str, title: str) -> str:
     prompt = f"""
-        You are a SUMMARY WRITER. Summarize "{title}" for Malaysian clinicians in LESS THAN 200 CHARACTERS.
-        Plan your summary carefully. Keep it concise and to the point.
+        You are a SUMMARY WRITER. Summarize "{title}" for Malaysian clinicians in LESS THAN 500 CHARACTERS.
+        Plan your summary carefully. Keep it concise and to the point. If there is no context given, reply "No content available".
         If there is not enough CHARACTERS left to complete your summary, you may have a few extra CHARACTERS.
 
         Compile your answer WITHIN 1 (ONE) short paragraph consisting only the most critical facts.

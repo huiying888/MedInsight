@@ -11,12 +11,44 @@ export default function UploadDocs() {
   const [jobStatus, setJobStatus] = useState([]); // array of {folder, file, status}
   const [err, setErr] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
   // refs for file inputs
   const patientInputRef = useRef();
   const guidelineInputRef = useRef();
   const knowledgeInputRef = useRef();
 
-  const handleFileChange = (e, setter) => setter(Array.from(e.target.files));
+  // ✅ Allowed extensions (no PDF per your requirement)
+  const ALLOWED_EXTS = new Set(["png", "jpg", "jpeg", "docx", "csv", "txt", "pptx", "xlsx"]);
+
+  // helper: get extension safely
+  const getExt = (name) => {
+    const m = name.toLowerCase().match(/\.([a-z0-9]+)$/i);
+    return m ? m[1] : "";
+  };
+
+  // ✅ validate & set selected files; show unsupported with filenames
+  const handleFileChange = (e, setter) => {
+    const all = Array.from(e.target.files || []);
+    const accepted = [];
+    const rejected = [];
+
+    for (const f of all) {
+      const ext = getExt(f.name);
+      if (ALLOWED_EXTS.has(ext)) accepted.push(f);
+      else rejected.push({ name: f.name, ext });
+    }
+
+    setter(accepted);
+
+    if (rejected.length > 0) {
+      const list = rejected.map(r => `${r.name}${r.ext ? ` (.${r.ext})` : ""}`).join(", ");
+      setErr(`❌ Unsupported file format: ${list}. Allowed: png, jpg, jpeg, docx, csv, txt, pptx, xlsx`);
+      setSuccessMsg("");
+    } else {
+      // clear previous error if new selection is valid
+      setErr("");
+    }
+  };
 
   const uploadFile = async (file, folder) => {
     try {
@@ -161,6 +193,7 @@ export default function UploadDocs() {
               <input
                 type="file"
                 multiple
+                accept=".png,.jpg,.jpeg,.docx,.csv,.txt,.pptx,.xlsx"
                 ref={type === "patients" ? patientInputRef :
                   type === "guidelines" ? guidelineInputRef :
                     knowledgeInputRef}
