@@ -743,7 +743,7 @@ if __name__ == "__main__":
             
         contexts, processed_q = hybrid_search(q, session_id=session_id, top_k=5)
         #print("Retrieved Contexts:")
-        for c in contexts:
+        #for c in contexts:
             #print("-", c["text"][:200], "...")
 
         answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_q)
@@ -759,5 +759,5 @@ if __name__ == "__main__":
         #     #print(f"{i}. {suggestion}")
         
         current_patient_name = get_patient_context(session_id)
-        if current_patient_name:
+        #if current_patient_name:
             ##print(f"\nCurrent patient: {current_patient_name}")
