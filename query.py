@@ -107,7 +107,7 @@ def get_embedding(text: str) -> np.ndarray:
             return np.array(resp_body["embedding"], dtype="float32")
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'ThrottlingException':
-                print("Throttled by Bedrock, retrying...")
+                #print("Throttled by Bedrock, retrying...")
                 time.sleep(2 ** attempt)
             else:
                 raise
@@ -172,7 +172,7 @@ def extract_patient_names(query):
         if name.lower() not in [n.lower() for n in unique_names]:
             unique_names.append(name)
     
-    print("Patient names detected:", unique_names)
+    #print("Patient names detected:", unique_names)
     return unique_names
 
 def extract_keywords(query):
@@ -195,7 +195,7 @@ def extract_keywords(query):
         if ent.label_ in ["ORG", "GPE", "DATE", "CARDINAL", "PRODUCT"]:
             keywords.append(ent.text)
     
-    print("Keywords detected:", keywords)
+    #print("Keywords detected:", keywords)
     return keywords
 
 def keyword_search(query, max_hits=5):
@@ -217,10 +217,10 @@ def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
     query_words = query.lower().split()
     has_pronouns = any(pronoun in query_words for pronoun in pronouns)
     
-    print(f"DEBUG CLEAR: names={original_patient_names}, pronouns={has_pronouns}, session_in_patient={session_id in current_patient}")
+    #print(f"DEBUG CLEAR: names={original_patient_names}, pronouns={has_pronouns}, session_in_patient={session_id in current_patient}")
     
     if not original_patient_names and not has_pronouns and session_id in current_patient:
-        print(f"Clearing patient context for general query: {query}")
+        ##print(f"Clearing patient context for general query: {query}")
         del current_patient[session_id]
     
     # Update patient context and resolve pronouns
@@ -275,14 +275,14 @@ def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
             # If we have patient-specific results, use only those
             if patient_filtered:
                 merged = patient_filtered
-                print(f"Using only {len(patient_filtered)} patient-specific results for {current_patient_name}")
+                #print(f"Using only {len(patient_filtered)} patient-specific results for {current_patient_name}")
             else:
                 # If no patient-specific results found, return empty list to indicate no data
-                print(f"No records found for {current_patient_name}")
+                #print(f"No records found for {current_patient_name}")
                 merged = []
 
-    print(f"Total merged results: {len(merged)}")
-    print(f"Current patient context: {get_patient_context(session_id)}")
+    #print(f"Total merged results: {len(merged)}")
+    #print(f"Current patient context: {get_patient_context(session_id)}")
     return merged, processed_query
 # -------------------------------
 # Generate Answer with Nova Pro
@@ -329,7 +329,7 @@ def extract_highlight(question, chunk_text):
     )
     resp_body = json.loads(response["body"].read())
     highlight = resp_body["output"]["message"]["content"][0]["text"]
-    print("Extracted highlight:", highlight)
+    #print("Extracted highlight:", highlight)
     return highlight.strip()
 
 def is_related_to_previous_context(current_question: str, session_id: str) -> bool:
@@ -373,7 +373,7 @@ def is_related_to_previous_context(current_question: str, session_id: str) -> bo
         overlap_ratio = overlap / min(len(current_keywords), len(history_keywords))
         # Consider related if there's significant overlap OR if it has patient indicators (like pronouns)
         is_related = overlap_ratio > 0.3 or has_patient_indicators
-    print(f"Context relation check: {overlap_ratio:.2f} overlap, patient_indicators={has_patient_indicators} - {'Related' if is_related else 'Unrelated'}")
+    #print(f"Context relation check: {overlap_ratio:.2f} overlap, patient_indicators={has_patient_indicators} - {'Related' if is_related else 'Unrelated'}")
     
     return is_related
 
@@ -386,7 +386,7 @@ def update_patient_context(question: str, session_id: str) -> str:
     if not is_related_to_previous_context(question, session_id):
         # Clear chat history for unrelated questions
         if session_id in chat_memory and len(chat_memory[session_id]) > 0:
-            print(f"Clearing chat history - unrelated topic detected")
+            #print(f"Clearing chat history - unrelated topic detected")
             chat_memory[session_id] = []
         
         # Clear patient context for unrelated questions ONLY if no pronouns in current question
@@ -395,13 +395,13 @@ def update_patient_context(question: str, session_id: str) -> str:
         has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         
         if not has_pronouns and session_id in current_patient:
-            print(f"Clearing patient context - unrelated topic")
+            #print(f"Clearing patient context - unrelated topic")
             del current_patient[session_id]
     
     # Update current patient if new name found
     if patient_names:
         current_patient[session_id] = patient_names[0]
-        print(f"Updated patient context for session {session_id}: {patient_names[0]}")
+        #print(f"Updated patient context for session {session_id}: {patient_names[0]}")
     elif not patient_names:
         # Check if question has pronouns or patient-specific terms
         pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them', 'it', 'this', 'that']
@@ -414,7 +414,7 @@ def update_patient_context(question: str, session_id: str) -> str:
         # Clear patient context for general medical questions
         if not has_pronouns and not has_patient_terms:
             if session_id in current_patient:
-                print(f"Clearing patient context - general query detected")
+                #print(f"Clearing patient context - general query detected")
                 del current_patient[session_id]
     
     # Additional check: if question is unrelated AND has no patient names/pronouns, clear patient context
@@ -423,7 +423,7 @@ def update_patient_context(question: str, session_id: str) -> str:
         question_words = question.lower().split()
         has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         if not patient_names and not has_pronouns and session_id in current_patient:
-            print(f"Force clearing patient context - unrelated general query")
+            #print(f"Force clearing patient context - unrelated general query")
             del current_patient[session_id]
     
     # Get current patient for this session
@@ -517,7 +517,7 @@ Answer:"""
         resp_body = json.loads(response["body"].read())
         return resp_body["output"]["message"]["content"][0]["text"]
     except Exception as e:
-        print(f"Error generating general answer: {e}")
+        #print(f"Error generating general answer: {e}")
         return "I'm unable to provide information on this topic. Please consult with a healthcare professional."
 
 def generate_query_suggestions(session_id="default", contexts=None):
@@ -570,7 +570,7 @@ Generate 4 different follow-up questions about {main_topic} (one per line, no nu
         
         return suggestions[:4] if len(suggestions) >= 4 else suggestions + [f"How to treat {main_topic}?", f"What causes {main_topic}?"][:4-len(suggestions)]
     except Exception as e:
-        print(f"Error generating suggestions: {e}")
+        #print(f"Error generating suggestions: {e}")
         return [f"How to treat {main_topic}?", f"What causes {main_topic}?", f"How long does {main_topic} last?", "When to see a doctor?"]
 
 def generate_answer_with_sources(question, contexts, session_id="default", processed_query=None):
@@ -586,7 +586,7 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
         question_words = question.lower().split()
         has_pronouns = any(pronoun in question_words for pronoun in pronouns)
         
-        print(f"DEBUG: patient_names_in_question={patient_names_in_question}, has_pronouns={has_pronouns}")
+        #print(f"DEBUG: patient_names_in_question={patient_names_in_question}, has_pronouns={has_pronouns}")
         
         # Only return patient-specific error if the question explicitly mentions patients or uses pronouns
         if patient_names_in_question or has_pronouns:
@@ -595,7 +595,7 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
             return f"No records found for patient '{patient_name}'. Please verify the patient name is correct.", [], []
         else:
             # For general medical questions, provide general medical information
-            print(f"DEBUG: Generating general medical answer for: {question}")
+            #print(f"DEBUG: Generating general medical answer for: {question}")
             general_answer = generate_general_medical_answer(question)
             return f"This information is not available in our knowledge base. {general_answer}", [], []
     
@@ -738,26 +738,26 @@ if __name__ == "__main__":
         if q.lower() == 'reset':
             reset_memory(session_id)
             current_patient.pop(session_id, None)
-            print("Session reset.")
+            #print("Session reset.")
             continue
             
         contexts, processed_q = hybrid_search(q, session_id=session_id, top_k=5)
-        print("Retrieved Contexts:")
+        #print("Retrieved Contexts:")
         for c in contexts:
-            print("-", c["text"][:200], "...")
+            #print("-", c["text"][:200], "...")
 
         answer, sources, suggestions = generate_answer_with_sources(q, contexts, session_id, processed_q)
 
-        #print("\nNova Pro Answer:\n", answer)
-        #print("\nSources:")
+        ##print("\nNova Pro Answer:\n", answer)
+        ##print("\nSources:")
         # for s in sources:
-        #     print(f"- {s['key']} (Page {s['page']})")
-        #     print(f" Highlight: {s['highlight']}\n")
+        #     #print(f"- {s['key']} (Page {s['page']})")
+        #     #print(f" Highlight: {s['highlight']}\n")
         
-        # print("\nSuggested Questions:")
+        # #print("\nSuggested Questions:")
         # for i, suggestion in enumerate(suggestions, 1):
-        #     print(f"{i}. {suggestion}")
+        #     #print(f"{i}. {suggestion}")
         
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
-            print(f"\nCurrent patient: {current_patient_name}")
+            ##print(f"\nCurrent patient: {current_patient_name}")
