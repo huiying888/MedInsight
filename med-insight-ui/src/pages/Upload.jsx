@@ -17,8 +17,8 @@ export default function UploadDocs() {
   const guidelineInputRef = useRef();
   const knowledgeInputRef = useRef();
 
-  // ✅ Allowed extensions (no PDF per your requirement)
-  const ALLOWED_EXTS = new Set(["png", "jpg", "jpeg", "docx", "csv", "txt", "pptx", "xlsx"]);
+  // ✅ Allowed extensions 
+  const ALLOWED_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "docx", "csv", "txt", "pptx", "xlsx"]);
 
   // helper: get extension safely
   const getExt = (name) => {
@@ -42,7 +42,7 @@ export default function UploadDocs() {
 
     if (rejected.length > 0) {
       const list = rejected.map(r => `${r.name}${r.ext ? ` (.${r.ext})` : ""}`).join(", ");
-      setErr(`❌ Unsupported file format: ${list}. Allowed: png, jpg, jpeg, docx, csv, txt, pptx, xlsx`);
+      setErr(`❌ Unsupported file format: ${list}. Allowed: pdf, png, jpg, jpeg, docx, csv, txt, pptx, xlsx`);
       setSuccessMsg("");
     } else {
       // clear previous error if new selection is valid
@@ -193,7 +193,7 @@ export default function UploadDocs() {
               <input
                 type="file"
                 multiple
-                accept=".png,.jpg,.jpeg,.docx,.csv,.txt,.pptx,.xlsx"
+                accept=".pdf,.png,.jpg,.jpeg,.docx,.csv,.txt,.pptx,.xlsx"
                 ref={type === "patients" ? patientInputRef :
                   type === "guidelines" ? guidelineInputRef :
                     knowledgeInputRef}
