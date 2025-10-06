@@ -34,10 +34,10 @@ class FileConverter:
                 image = background
             
             image.save(output_path, 'PDF', resolution=100.0)
-            print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+            print(f"Converted: {input_path.name} -> {output_path.name}")
             return True
         except Exception as e:
-            print(f"✗ Error converting {input_path.name}: {str(e)}")
+            print(f"Error converting {input_path.name}: {str(e)}")
             return False
     
     def convert_docx_to_pdf(self, input_path: Path, output_path: Path):
@@ -60,7 +60,7 @@ class FileConverter:
             )
 
             if result.returncode != 0:
-                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                print(f"LibreOffice error while converting {input_path.name}: {result.stderr}")
                 return False
 
             # LibreOffice saves the PDF with the same base name as input
@@ -68,14 +68,14 @@ class FileConverter:
             if generated_pdf.exists():
                 if generated_pdf != output_path:
                     generated_pdf.rename(output_path)
-                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                print(f"Converted: {input_path.name} -> {output_path.name}")
                 return True
             else:
-                print(f"✗ PDF not generated for {input_path.name}")
+                print(f"PDF not generated for {input_path.name}")
                 return False
 
         except Exception as e:
-            print(f"✗ Error converting {input_path.name}: {str(e)}")
+            print(f"Error converting {input_path.name}: {str(e)}")
             return False
     
     def convert_xlsx_to_pdf(self, input_path: Path, output_path: Path):
@@ -96,21 +96,21 @@ class FileConverter:
             )
 
             if result.returncode != 0:
-                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                print(f"LibreOffice error while converting {input_path.name}: {result.stderr}")
                 return False
 
             generated_pdf = output_path.parent / (input_path.stem + ".pdf")
             if generated_pdf.exists():
                 if generated_pdf != output_path:
                     generated_pdf.rename(output_path)
-                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                print(f"Converted: {input_path.name} -> {output_path.name}")
                 return True
             else:
-                print(f"✗ PDF not generated for {input_path.name}")
+                print(f"PDF not generated for {input_path.name}")
                 return False
 
         except Exception as e:
-            print(f"✗ Error converting {input_path.name}: {str(e)}")
+            print(f"Error converting {input_path.name}: {str(e)}")
             return False
 
     def convert_ppt_to_pdf(self, input_path: Path, output_path: Path):
@@ -131,21 +131,21 @@ class FileConverter:
             )
 
             if result.returncode != 0:
-                print(f"✗ LibreOffice error while converting {input_path.name}: {result.stderr}")
+                print(f"LibreOffice error while converting {input_path.name}: {result.stderr}")
                 return False
 
             generated_pdf = output_path.parent / (input_path.stem + ".pdf")
             if generated_pdf.exists():
                 if generated_pdf != output_path:
                     generated_pdf.rename(output_path)
-                print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+                print(f"Converted: {input_path.name} -> {output_path.name}")
                 return True
             else:
-                print(f"✗ PDF not generated for {input_path.name}")
+                print(f"PDF not generated for {input_path.name}")
                 return False
 
         except Exception as e:
-            print(f"✗ Error converting {input_path.name}: {str(e)}")
+            print(f"Error converting {input_path.name}: {str(e)}")
             return False
     
     def convert_csv_to_pdf(self, input_path: Path, output_path: Path):
@@ -170,10 +170,10 @@ class FileConverter:
             elements.append(table)
             
             doc.build(elements)
-            print(f"✓ Converted: {input_path.name} -> {output_path.name}")
+            print(f"Converted: {input_path.name} -> {output_path.name}")
             return True
         except Exception as e:
-            print(f"✗ Error converting {input_path.name}: {str(e)}")
+            print(f"Error converting {input_path.name}: {str(e)}")
             return False
         
     def convert_txt_to_pdf(self, input_path: Path, output_path: Path):
@@ -195,11 +195,11 @@ class FileConverter:
             elements.append(Preformatted(content, pre_style))
             
             doc.build(elements)
-            print(f"✓ Converted: {Path(input_path).name} -> {Path(output_path).name}")
+            print(f"Converted: {Path(input_path).name} -> {Path(output_path).name}")
             return True
 
         except Exception as e:
-            print(f"✗ Error converting {Path(input_path).name}: {str(e)}")
+            print(f"Error converting {Path(input_path).name}: {str(e)}")
             return False
         
     def convert_file(self, file_path, output_path=None):
@@ -212,7 +212,7 @@ class FileConverter:
         
         if ext == ".pdf":
             shutil.copy(file_path, output_path)
-            print(f"✓ Copied PDF: {file_path.name} -> {output_path.name}")
+            print(f"Copied PDF: {file_path.name} -> {output_path.name}")
             return True
         elif ext in ['.png', '.jpg', '.jpeg']:
             return self.convert_image_to_pdf(file_path, output_path)
@@ -227,7 +227,7 @@ class FileConverter:
         elif ext == '.txt':
             return self.convert_txt_to_pdf(file_path, output_path)
         else:
-            print(f"⊘ Unsupported format: {file_path.name}")
+            print(f"Unsupported format: {file_path.name}")
             return False
     
     def convert_all(self):
