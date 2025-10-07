@@ -11,6 +11,9 @@ from urllib.parse import quote
 import re
 from collections import defaultdict
 
+def remove_emojis(text):
+    return re.sub(r'[^\w\s,.?-]', '', text)
+    
 # -------------------------------
 # Config
 # -------------------------------
@@ -212,6 +215,7 @@ def keyword_search(query, max_hits=5):
 def hybrid_search(query, session_id="default", top_k=None, keyword_hits=10):
     """Dynamic search with patient context awareness."""
     # Clear patient context for general medical questions FIRST
+    query = remove_emojis(query)
     original_patient_names = extract_patient_names(query)
     pronouns = ['his', 'her', 'their', 'he', 'she', 'they', 'him', 'them']
     query_words = query.lower().split()
@@ -761,3 +765,4 @@ if __name__ == "__main__":
         current_patient_name = get_patient_context(session_id)
         #if current_patient_name:
             ##print(f"\nCurrent patient: {current_patient_name}")
+
