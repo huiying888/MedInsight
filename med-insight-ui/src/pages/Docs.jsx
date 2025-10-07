@@ -188,7 +188,7 @@ export default function Docs() {
       setDrawerSummary(txt);
     } catch (e) {
       console.error(e);
-      setDrawerError("No summary yet. Try again after processing completes.");
+      setDrawerError("No summary available.");
     } finally {
       setDrawerLoading(false);
     }
