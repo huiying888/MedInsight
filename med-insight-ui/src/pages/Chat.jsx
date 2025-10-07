@@ -18,8 +18,7 @@ const defaultAssistantMessage =
 const faqItems = [
   { id: 1, q: "🩺 What are the symptoms of fever?" },
   { id: 2, q: "💊 Which patient has allergy to Penicillin?" },
-  { id: 3, q: "👩🏼‍⚕️ List patients information" },
-  { id: 4, q: "🩸 What is the use of aspirin?" },
+  { id: 3, q: "🩸 What is the use of aspirin?" }
 ];
 
 // Utility: format AI answers nicely
