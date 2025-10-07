@@ -150,7 +150,7 @@ nlp = spacy.load("en_core_web_sm")
 
 def extract_patient_names(query):
     """Extract patient names using NLP entity recognition with fallback."""
-    query = remove_emoji(query)
+    query = remove_emojis(query)
     doc = nlp(query)
     names = []
     
@@ -805,4 +805,5 @@ if __name__ == "__main__":
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
             print(f"\n👤 Current patient: {current_patient_name}")
+
 
