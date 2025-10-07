@@ -26,8 +26,11 @@ S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metada
 SOURCE_BUCKET = os.getenv("SOURCE_BUCKET", "meddoc-raw")
 SOURCE_REGION = os.getenv("SOURCE_REGION", os.getenv("AWS_REGION", "us-east-1"))
 
-INDEX_FILE = r"faiss/index.faiss"
-META_FILE = r"faiss/metadata.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_FAISS_DIR = os.path.join(BASE_DIR, "faiss")
+os.makedirs(LOCAL_FAISS_DIR, exist_ok=True)
+INDEX_FILE = os.path.join(LOCAL_FAISS_DIR, "index.faiss")
+META_FILE = os.path.join(LOCAL_FAISS_DIR, "metadata.json")
 
 # -------------------------------
 # Clients
@@ -805,5 +808,6 @@ if __name__ == "__main__":
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
             print(f"\n👤 Current patient: {current_patient_name}")
+
 
 
