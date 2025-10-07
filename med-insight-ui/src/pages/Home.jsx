@@ -3,10 +3,10 @@ import Brand from "../components/Brand";
 import { getUser } from "../utils/authMock";
 
 export const API_BASE_FRONTEND =
-  process.env.REACT_APP_API_BASE_FRONTEND || "http://localhost:5000";
+  process.env.REACT_APP_API_BASE_FRONTEND || "http://54.198.86.26:5000";
 
 export const API_BASE_BACKEND =
-  process.env.REACT_APP_API_BASE_BACKEND || "http://localhost:3000";
+  process.env.REACT_APP_API_BASE_BACKEND || "http://54.198.86.26:3000";
 
 export default function Home() {
   const user = getUser();
