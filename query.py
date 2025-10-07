@@ -26,11 +26,8 @@ S3_VECTOR_BUCKET = "meddoc-vectorstore"     # output (store FAISS index + metada
 SOURCE_BUCKET = os.getenv("SOURCE_BUCKET", "meddoc-raw")
 SOURCE_REGION = os.getenv("SOURCE_REGION", os.getenv("AWS_REGION", "us-east-1"))
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # folder where this script lives
-LOCAL_FAISS_DIR = os.path.join(BASE_DIR, "faiss")
-os.makedirs(LOCAL_FAISS_DIR, exist_ok=True)
-INDEX_FILE = os.path.join(LOCAL_FAISS_DIR, "index.faiss")
-META_FILE = os.path.join(LOCAL_FAISS_DIR, "metadata.json")
+INDEX_FILE = r"faiss/index.faiss"
+META_FILE = r"faiss/metadata.json"
 
 # -------------------------------
 # Clients
@@ -127,7 +124,8 @@ def query_faiss(question, k=3):
     # Load local FAISS index + metadata
     if not os.path.exists(INDEX_FILE) or not os.path.exists(META_FILE):
         raise FileNotFoundError("FAISS index or metadata not found locally. Please build the index first.")
-
+    print("Reading FAISS index from:", os.path.abspath(INDEX_FILE))
+    print("Reading metadata from:", os.path.abspath(META_FILE))
     index = faiss.read_index(INDEX_FILE)
     with open(META_FILE, "r") as f:
         metadata = json.load(f)
@@ -806,4 +804,3 @@ if __name__ == "__main__":
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
             print(f"\n👤 Current patient: {current_patient_name}")
-
