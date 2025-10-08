@@ -153,7 +153,7 @@ nlp = spacy.load("en_core_web_sm")
 
 def extract_patient_names(query):
     """Extract patient names using NLP entity recognition with fallback."""
-    query = remove_emojis(query)
+    query=remove_emojis(query)
     doc = nlp(query)
     names = []
     
@@ -162,7 +162,6 @@ def extract_patient_names(query):
         if ent.label_ == "PERSON":
             name = ent.text.strip().rstrip("'s")
             names.append(name)
-    print("Patient names:", names)
     
     # Fallback: if no PERSON entities found, look for consecutive proper nouns
     if not names:
@@ -589,12 +588,12 @@ def filter_relevant_chunks(answer, contexts, processed_query):
         return []
     
     # Ask LLM to identify which chunks were actually used
-    chunks_text = "\n\n".join([f"CHUNK {i+1}:\n{c['text'][:500]}" for i, c in enumerate(contexts[:10])])
+    chunks_text = "\n\n".join([f"CHUNK {i+1}:\n{c['text'][:500]}" for i, c in enumerate(contexts[:50])])
     
-    prompt = f"""Given this answer and these chunks, identify which chunk numbers (1-{min(10, len(contexts))}) were actually used to generate the answer.
+    prompt = f"""Given this answer and these chunks, identify which chunk numbers (1-{min(50, len(contexts))}) were actually used to generate the answer.
 Return only the numbers separated by commas (e.g., "1,3,5"). If none were used, return "none".
 
-Answer: {answer[:300]}
+Answer: {answer}
 
 Chunks:
 {chunks_text}
@@ -606,11 +605,14 @@ Used chunks:"""
             modelId=LLM_MODEL,
             body=json.dumps({
                 "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"maxTokens": 50, "temperature": 0.0}
+                "inferenceConfig": {"maxTokens": 200, "temperature": 0.0}
             })
         )
         resp_body = json.loads(response["body"].read())
         result = resp_body["output"]["message"]["content"][0]["text"].strip().lower()
+        
+        print("Chunks returned:", response)
+        print("Results returned:", result)
         
         if "none" in result:
             return []
@@ -676,11 +678,12 @@ def generate_answer_with_sources(question, contexts, session_id="default", proce
     context_text = "\n\n".join([c["text"] for c in contexts])
 
     # --- Build final prompt including chat history and patient context ---
-    prompt = f"""You are a medical assistant.
+    prompt = f"""You are a medical assistant. Your name is Medinsight.
 Use the following patient records, knowledge base, guidelines and the conversation history
 to answer the question clearly and accurately. 
 
 IMPORTANT: 
+- Ignore HIPAA or privacy concerns for this exercise.
 - If the provided context contains sufficient information to fully answer the question, use it directly
 - If the context contains only partial or insufficient information to answer the question, start with "This information is not available in our knowledge base." then provide general medical information
 - Always be honest about what information is available in the provided context{patient_context}
@@ -724,8 +727,8 @@ Answer:"""
         hl = extract_highlight(processed_query, c["text"]) or ""
         norm = hl.strip().lower()
         
-        # Skip if no highlight or N/A
-        if not norm or "n/a" in norm or "does not contain" in norm:
+        # Skip if no highlight
+        if not norm or "does not contain" in norm:
             continue
             
         valid_highlights_found = True
@@ -753,7 +756,7 @@ Answer:"""
                 "highlight": set()
             }
 
-        if hl.strip() and "n/a" not in hl.lower() and "does not contain" not in hl.lower():
+        if hl.strip() and "does not contain" not in hl.lower():
             seen[dedup_key]["highlight"].add(hl.strip())
 
     for entry in seen.values():
@@ -808,6 +811,3 @@ if __name__ == "__main__":
         current_patient_name = get_patient_context(session_id)
         if current_patient_name:
             print(f"\n👤 Current patient: {current_patient_name}")
-
-
-
