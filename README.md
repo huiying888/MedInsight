@@ -2,9 +2,9 @@
 
 ![MedInsight](assets/medinsight-photo.png)
 
-**MedInsight** is an AI-powered medical document query tool that lets healthcare teams ask natural-language questions and instantly find answers inside large collections of PDFs—guidelines, reports, and scanned documents.  
-The goal is to provide clinicians and administrators with actionable insights from medical documents, enabling them to access critical information without manually searching through countless files.  
-It combines **smart PDF search with OCR**, **structure-aware understanding of tables and sections**, and an **interactive AI assistant** that delivers concise answers with source citations, helping healthcare teams make faster and more confident decisions at the point of care.
+**MedInsight** is an AI-powered **medical document intelligence system** that helps healthcare professionals instantly **search, summarize, and analyze** unstructured clinical data — from PDFs, DOCX, PPT, CSV, or scanned medical images.  
+
+By combining **OCR**, **Natural Language Processing (NLP)**, and **Generative AI**, MedInsight enables clinicians to **ask questions in plain language**, view **AI summaries of patient records**, and access **interactive dashboards** that visualize medical insights — all from one centralized platform.
 
 ---
 ## Table of Contents
@@ -19,7 +19,7 @@ It combines **smart PDF search with OCR**, **structure-aware understanding of ta
 ---
 ## Problem Statement: AI-Powered Medical Document Query Tool
 Healthcare professionals in Malaysia face the challenge of:  
-- Critical patient data and clinical guidelines buried in unstructured PDFs.  
+- Critical patient data and clinical guidelines buried in unstructured documents.  
 - Manual searches that are time-consuming and error-prone.  
 - Difficulty extracting accurate insights from scanned, legacy, or complex medical documents.
 
@@ -27,14 +27,11 @@ Healthcare professionals in Malaysia face the challenge of:
 
 ## Solution
 
-MedInsight solves this by:
-
-- Providing a seamless plug-in layer that integrates with existing hospital HIS/EMR systems without requiring replacement.  
-- **Smart PDF extraction** using OCR + NLP to handle both scanned and digital PDFs, extracting tables, charts, and free text into queryable data.  
-- **Upload PDFs** directly via the interface: files are automatically saved to the cloud (AWS S3) and trigger OCR and embedding generation for meaningful, semantic queries.  
-- **Natural language, chat-style query interface** allowing doctors to ask questions in plain English or Malay (e.g., “Show me Mr. Ali’s last 3 HbA1c results.”).  
-- **Contextual answering** that highlights relevant PDF sections, reducing scrolling and manual searching.  
-- Transforming unstructured medical documents into an accessible knowledge base for faster, more confident clinical decisions.
+**MedInsight** solves these problems through an **AI-driven, all-in-one medical document platform** that enables clinicians to:
+1. **Search** any document through natural conversation.  
+2. **Summarize** patient records with AI.  
+3. **Visualize** insights on an analytics dashboard.  
+4. **Upload and process** multiple file formats with OCR automation.  
 
 ---
 
