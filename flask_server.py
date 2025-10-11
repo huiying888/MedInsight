@@ -88,7 +88,7 @@ def _summarize_with_nova(context: str, title: str) -> str:
     """
     body = {
         "messages": [{"role": "user", "content": [{"text": prompt}]}],
-        "inferenceConfig": {"maxTokens": 100, "temperature": 0.2, "topP": 0.9},
+        "inferenceConfig": {"maxTokens": 250, "temperature": 0.2, "topP": 0.9},
     }
     resp = bedrock.converse(modelId=LLM_MODEL, **body)
     blocks = resp.get("output", {}).get("message", {}).get("content", [])
@@ -207,3 +207,4 @@ def ask_question_stream():
 
 if __name__ == "__main__":
     serve(app, host="0.0.0.0", port=3000)
+
