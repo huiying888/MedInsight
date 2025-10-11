@@ -24,7 +24,7 @@ PROCESSED_BUCKET = "meddoc-structured"
 
 def clean_value(val: str) -> str:
     val = re.split(
-        r"(SECTION|Full name of doctor|Diagnosis|Age of patient|Allergies|MCR|NRIC/Passport no.)",
+        r"(SECTION|Full name of doctor|Diagnosis|Age of patient|Allergies|MCR|NRIC / MyKad no.)",
         val,
         maxsplit=1,
     )[0]
@@ -38,7 +38,7 @@ def parse_chunks(chunks):
 
         if match := re.search(r"Full name of patient\s*\n?([^\n]+)", text):
             patient_data["name"] = clean_value(match.group(1))
-        if match := re.search(r"NRIC/Passport no\.\s*\n?([^\n]+)", text):
+        if match := re.search(r"NRIC / MyKad no\.\s*\n?([^\n]+)", text):
             patient_data["nric"] = clean_value(match.group(1))
         if match := re.search(r"Age of patient\s*\n?(\d+)", text):
             patient_data["age"] = int(match.group(1))
